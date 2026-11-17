@@ -1,0 +1,24 @@
+{
+  "name": "tower-of-trials-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tower of [Trials] - top-down pixel action demo (placeholder title)",
+  "homepage": "https://20250032027-alt.github.io/tower-of-trials/",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "test": "node --test",
+    "connect": "node scripts/connect.mjs",
+    "deploy": "npm run build && gh-pages -d dist -t",
+    "single": "npm run build && node scripts/make-single.mjs"
+  },
+  "dependencies": {
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0",
+    "vite": "^7.0.0"
+  }
+}
