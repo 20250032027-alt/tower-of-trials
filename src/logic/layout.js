@@ -172,7 +172,7 @@ export function pickRiftSpot(layout, rng) {
 }
 
 // ----- randomly generated dungeon description
-export function generateRandomDef(seed) {
+export function generateRandomDef(seed, { enemyBonus = 0 } = {}) {
   const rng = makeRng(seed);
   const w = 72, h = 46;
   const target = rng.int(7, 9);
@@ -197,7 +197,7 @@ export function generateRandomDef(seed) {
   let chests = 0;
   rooms.forEach((r, i) => {
     if (i === 0) return;
-    r.enemies = rng.int(2, 4) + (r.w * r.h > 90 ? 1 : 0);
+    r.enemies = rng.int(2, 4) + (r.w * r.h > 90 ? 1 : 0) + enemyBonus;
     if (r.role === 'exit') r.enemies += 2;
     if (!r.role && chests < 3 && rng.chance(0.4)) { r.chest = true; chests++; }
     if (r.w >= 11 && r.h >= 9 && rng.chance(0.5)) r.pillars = [[2, 2], [r.w - 4, 2], [2, r.h - 4], [r.w - 4, r.h - 4]];

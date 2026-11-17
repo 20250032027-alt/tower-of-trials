@@ -5,14 +5,14 @@
 import { G, persist, startFresh, continueSave, saveSettings } from '../game/state.js';
 import { unlockAudio, sfx } from '../game/sfx.js';
 import { music } from '../game/music.js';
-import { icon, WEAPON_ICON } from './icons.js';
+import { icon, WEAPON_ICON, setIcon, traitIcon, statIcon, typeIcon } from './icons.js';
 import {
   GAME_TITLE, RANK_COLORS, RANK_ORDER, RANKS, TRAIT_SLOTS, MANA_CIRCLE_CHANCE, MANA_TYPES, GEMINI_NOTICE,
   LEVEL_MAX, LEVEL_MIN, xpToNext, rankOfLevel, UNITS, BERSERK, FOCUS,
 } from '../data/constants.js';
 import { TRAITS, TRAIT_BY_ID, TRAIT_TYPES } from '../data/traits.js';
 import { WEAPON_LIST, CLASSES, WEAPONS } from '../data/weapons.js';
-import { TOWER, DUNGEONS } from '../data/world.js';
+import { TOWER, DUNGEONS, FLOORS, dungeonsOf } from '../data/world.js';
 import { computeStats, traitPassives } from '../logic/stats.js';
 import { setLevel, addXp, innateTalent } from '../logic/progression.js';
 import { rollManaCircles } from '../logic/mana.js';
@@ -104,7 +104,7 @@ export function createUI() {
     if (menuOpen || dialogOpen) return;
     unlockAudio();
     menuOpen = true;
-    if (startTab) tab = startTab;
+    if (startTab) tab = startTab === 'skills' ? 'traits' : startTab;
     pauseScene();
     $menu.classList.remove('hidden');
     render();
@@ -120,12 +120,12 @@ export function createUI() {
   }
 
   const TABS = [
-    ['status', 'STATUS'], ['weapons', 'WEAPONS'], ['traits', 'TRAITS'], ['skills', 'SKILLS'],
+    ['status', 'STATUS'], ['traits', 'LOADOUT'], ['weapons', 'WEAPONS'],
     ['magic', 'MAGIC'], ['tower', 'TOWER'], ['help', 'HELP'], ['demo', 'DEMO'],
   ];
 
   function render() {
-    const body = { status: rStatus, weapons: rWeapons, traits: rTraits, skills: rSkills, magic: rMagic, tower: rTower, help: rHelp, demo: rDemo }[tab]();
+    const body = { status: rStatus, weapons: rWeapons, traits: rTraits, magic: rMagic, tower: rTower, help: rHelp, demo: rDemo }[tab]();
     const prev = $menu.querySelector('.content');
     const scroll = prev && renderedTab === tab ? prev.scrollTop : 0;
     renderedTab = tab;
@@ -161,6 +161,11 @@ export function createUI() {
           <div class="bar"><i style="width:${p.level >= LEVEL_MAX ? 100 : (p.xp / need) * 100}%"></i></div>
           <small>${p.level >= LEVEL_MAX ? 'MAX LEVEL' : `${Math.floor(p.xp)} / ${need} XP`} &nbsp; KILLS ${p.kills}</small>
         </div>
+      </div>
+      <div class="chiprow">
+        ${[['hp', 'HEALTH', Math.round(s.maxHealth)], ['stamina', 'STAMINA', Math.round(s.maxStamina)], ['mana', 'MANA', Math.round(s.maxMana)], ['defense', 'DEFENSE', s.defense.toFixed(0)],
+          ['damage', 'DAMAGE', pct(s.damage)], ['speed', 'SPEED', pct(s.moveSpeed)], ['crit', 'CRIT', pct(s.critRate, 0)], ['kills', 'KILLS', p.kills]]
+          .map(([ic, l, v]) => `<div class="sc"><img src="${statIcon(ic, 2)}" alt=""><div><small>${l}</small><b>${v}</b></div></div>`).join('')}
       </div>
       <div class="cols">
       <table class="stats"><thead><tr><th colspan="3">BASIC</th></tr></thead>
@@ -221,58 +226,73 @@ export function createUI() {
     return `<p class="hint">Every Training weapon is unlocked for the demo. Switch in-game with Q (or SWAP).</p>${group('melee')}${group('ranger')}${group('magic')}`;
   }
 
-  // ---- TRAITS
-  function traitCard(t) {
-    const p = G.profile;
-    const equipped = p.traits.includes(t.id);
+  // ---- LOADOUT (traits + skills + their keybinds in one place)
+  const SLOT_KEYS = ['1', '2', '3'];
+  const PRESETS = [
+    { id: 'warrior', name: 'WARRIOR', desc: 'Tough and bloodthirsty. Melee.', traits: ['iron_body', 'strong_endurance', 'bloodlust'], icon: 't_melee' },
+    { id: 'ranger', name: 'RANGER', desc: 'Fast, sharp-eyed. Bows and guns.', traits: ['focus_shot', 'keen_senses', 'swift_wind'], icon: 't_ranger' },
+    { id: 'mage', name: 'MAGE', desc: 'Mana first. Needs a Mana Circle.', traits: ['mana_reserve', 'mana_surge', 'focused_mind'], icon: 't_magic' },
+    { id: 'tank', name: 'TANK', desc: 'Hard to kill. Takes hits for you.', traits: ['iron_body', 'iron_will', 'second_wind'], icon: 's_defense' },
+  ];
+  let traitFilter = 'all';
+  const fmtTime = (s) => (s >= 60 ? (Number.isInteger(s / 60) ? s / 60 : (s / 60).toFixed(1)) + 'm' : s + 's');
+  const timing = (sk) => (sk.active ? `${fmtTime(sk.active)} ACTIVE` : 'INSTANT') + ` / ${fmtTime(sk.cooldown)} CD`;
+
+  function traitFrame(t, size = 3) {
     const col = RANK_COLORS[t.rank];
+    return `<div class="tf" style="--rc:${col}"><img src="${t.secret ? setIcon('t_secret', size) : traitIcon(t.id, size)}" alt=""><b class="rk">${t.rank}</b></div>`;
+  }
+  function traitCard(t) {
+    const equipped = G.profile.traits.includes(t.id);
     const type = TRAIT_TYPES[t.type];
     if (t.secret) {
-      return `<div class="card locked"><div class="badge" style="color:${col};border-color:${col}">${t.rank}</div>
-        <div class="ctext"><b>???</b><small style="color:${type.color}">SECRET</small><div>Effect: ???</div><small>Skill: ???</small></div>
-        <button class="btn small" disabled>LOCKED</button></div>`;
+      return `<div class="tc locked">${traitFrame(t)}<div class="tb"><div class="tn"><b>???</b><i style="color:${type.color}">SECRET</i></div>
+        <p><em>PASSIVE</em> ???</p><p><em>SKILL</em> ???</p><p class="tm">Find the way to unlock it.</p></div></div>`;
     }
     const sk = t.skill;
-    const skillLine = sk
-      ? `<small class="skill">SKILL: ${esc(sk.text)} <em>${sk.active ? 'Active ' + fmtTime(sk.active) : 'Instant'}, Cooldown ${fmtTime(sk.cooldown)}</em></small>`
-      : '<small class="skill dim">SKILL: ??? (blank in the plan, locked)</small>';
-    return `<div class="card ${equipped ? 'equipped' : ''}"><div class="badge" style="color:${col};border-color:${col}">${t.rank}</div>
-      <div class="ctext"><b>${esc(t.name)}</b> <small style="color:${type.color}">${t.type.toUpperCase()}</small>
-      <div>${esc(t.effects)}</div>${skillLine}</div>
-      <button class="btn small" data-act="${equipped ? 'unequipTrait' : 'equipTrait'}" data-id="${t.id}">${equipped ? 'REMOVE' : 'EQUIP'}</button></div>`;
+    return `<div class="tc ${equipped ? 'equipped' : ''}">${traitFrame(t)}
+      <div class="tb"><div class="tn"><b>${esc(t.name.toUpperCase())}</b><i style="color:${type.color}">${t.type.toUpperCase()}</i></div>
+        <p><em>PASSIVE</em> ${esc(t.effects)}</p>
+        ${sk ? `<p><em>SKILL</em> ${esc(sk.text)}</p><p class="tm">${timing(sk)}</p>` : '<p class="dim"><em>SKILL</em> ??? (blank in the plan)</p>'}
+      </div>
+      <button class="btn small eqb" data-act="${equipped ? 'unequipTrait' : 'equipTrait'}" data-id="${t.id}">${equipped ? 'REMOVE' : 'EQUIP'}</button></div>`;
   }
-  function fmtTime(s) {
-    if (s >= 60) { const m = s / 60; return (Number.isInteger(m) ? m : m.toFixed(1)) + ' min'; }
-    return s + ' secs';
+  function slotCard(i) {
+    const t = TRAIT_BY_ID[G.profile.traits[i]];
+    const key = `<b class="key">${SLOT_KEYS[i]}</b>`;
+    if (!t) return `<div class="ls empty">${key}<div class="tf blank"><span>+</span></div><div class="lsb"><b class="dim">EMPTY</b><small>Pick a trait below. Its skill goes on key ${SLOT_KEYS[i]}.</small></div></div>`;
+    const sk = t.skill;
+    return `<div class="ls filled" style="--rc:${RANK_COLORS[t.rank]}">${key}${traitFrame(t, 4)}
+      <div class="lsb"><b>${esc(t.name.toUpperCase())}</b>
+        <small>${sk ? esc(sk.text) : '??? (blank in the plan)'}</small>
+        ${sk ? `<small class="tm">${timing(sk)}</small>` : ''}</div>
+      <button class="btn small" data-act="unequipTrait" data-id="${t.id}">REMOVE</button></div>`;
   }
   function rTraits() {
     const p = G.profile;
-    const slots = Array.from({ length: TRAIT_SLOTS }, (_, i) => {
-      const t = TRAIT_BY_ID[p.traits[i]];
-      return `<div class="slot ${t ? 'filled' : ''}"><span>${i + 1}</span>${t ? `<b style="color:${RANK_COLORS[t.rank]}">${esc(t.name)}</b>` : '<i>empty</i>'}</div>`;
-    }).join('');
-    const first = G.firstRun ? '<p class="hint pulse">Pick up to 3 traits to start. Each trait gives passive bonuses AND a skill you trigger with keys 1, 2, 3.</p>' : '';
+    const first = G.firstRun ? '<p class="hint pulse">Pick up to 3 traits to start. Each one gives passive bonuses AND a skill on keys 1, 2, 3.</p>' : '';
+    const presets = PRESETS.map((pr) => {
+      const on = pr.traits.length === p.traits.length && pr.traits.every((x) => p.traits.includes(x));
+      return `<button class="pre ${on ? 'on' : ''}" data-act="preset" data-id="${pr.id}"><img src="${setIcon(pr.icon, 3)}" alt=""><b>${pr.name}</b><small>${esc(pr.desc)}</small></button>`;
+    }).join('') + `<button class="pre clear" data-act="preset" data-id="clear"><img src="${setIcon('s_lock', 3)}" alt=""><b>CLEAR</b><small>Empty all three slots.</small></button>`;
+    const filters = [['all', 'ALL'], ...Object.keys(TRAIT_TYPES).filter((k) => k !== 'Secret').map((k) => [k, k.toUpperCase()]), ['Secret', 'SECRET']]
+      .map(([id, label]) => `<button class="chip ${traitFilter === id ? 'on' : ''}" data-act="filter" data-id="${id}">${label}</button>`).join('');
+    const list = TRAITS.filter((t) => traitFilter === 'all' || t.type === traitFilter || (traitFilter === 'Secret' && t.secret));
     const byRank = RANK_ORDER.map((r) => {
-      const list = TRAITS.filter((t) => t.rank === r);
-      return `<h3 style="color:${RANK_COLORS[r]}">${r} RANK TRAITS</h3><div class="cards">${list.map(traitCard).join('')}</div>`;
+      const ts = list.filter((t) => t.rank === r);
+      if (!ts.length) return '';
+      return `<h3 style="color:${RANK_COLORS[r]}">${r} RANK</h3><div class="tgrid">${ts.map(traitCard).join('')}</div>`;
     }).join('');
-    return `${first}<div class="slots">${slots}</div>${byRank}`;
-  }
-
-  // ---- SKILLS
-  function rSkills() {
-    const p = G.profile;
-    const cards = Array.from({ length: TRAIT_SLOTS }, (_, i) => {
-      const t = TRAIT_BY_ID[p.traits[i]];
-      if (!t) return `<div class="card empty"><div class="badge">${i + 1}</div><div class="ctext"><b>EMPTY SLOT</b><small>Equip a trait to get its skill.</small></div></div>`;
-      const sk = t.skill;
-      return `<div class="card"><div class="badge" style="color:${RANK_COLORS[t.rank]};border-color:${RANK_COLORS[t.rank]}">${i + 1}</div>
-        <div class="ctext"><b>${esc(t.name)}</b> <small>Skill Acquired</small>
-        ${sk ? `<div>${esc(sk.text)}</div><small>Active: ${sk.active ? fmtTime(sk.active) : 'Instant'} &nbsp; Cooldown: ${fmtTime(sk.cooldown)}</small>` : '<div class="dim">??? (this skill is blank in the plan)</div><small>LOCKED</small>'}
-        </div></div>`;
-    }).join('');
-    return `<p class="hint">Press the number key (or tap the slot) to use a skill. Skill ranks follow their trait.</p>${cards}
-      <h3>SWORD AURA (MELEE)  -  key R</h3>
+    return `${first}
+      <h3>SKILL SLOTS</h3>
+      <div class="lslots">${[0, 1, 2].map(slotCard).join('')}</div>
+      <p class="hint">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> in the game to use a skill (or tap its button). Passives are always on.</p>
+      <h3>QUICK SETUPS</h3>
+      <div class="presets">${presets}</div>
+      <h3>TRAIT LIBRARY</h3>
+      <div class="chips">${filters}</div>
+      ${byRank}
+      <h3>SWORD AURA <kbd>R</kbd></h3>
       <p class="hint">Physical Force is split into ${BERSERK.maxCores} Aura Cores (25% each). Each Berserk activation burns one Core, then Force drains ${pct(BERSERK.drainPerSecond, 1)} per second. Empty = <b>Life Force Decay</b> (damage taken, move speed -70%, damage -50%, crit rate -25%). Ending early = <b>Life Force Exhaustion</b>. A Core regenerates after ${BERSERK.coreRegenSeconds}s without activating. Berserker's Fury/Wrath skills trigger the stronger Berserk Mode.</p>`;
   }
 
@@ -304,43 +324,53 @@ export function createUI() {
   }
 
   // ---- TOWER
+  let towerFloor = null;
   function rTower() {
     const p = G.profile;
-    const floors = TOWER.map((f) => {
-      const cur = G.scene && ((G.scene.floor && G.scene.floor.id === f.id) || (G.scene.dun && G.scene.dun.floor === f.id));
-      let btn;
-      if (!f.playable) btn = '<button class="btn small" disabled>NOT IN DEMO</button>';
-      else if (f.id === 'floor1' && !p.flags.trialCleared) btn = '<button class="btn small" data-act="travel" data-id="floor1">TRAVEL (DEMO)</button>';
-      else btn = `<button class="btn small" data-act="travel" data-id="${f.id}">${cur ? 'RESTART FLOOR' : 'TRAVEL'}</button>`;
-      return `<div class="card ${cur ? 'equipped' : ''} ${f.playable ? '' : 'locked'}"><div class="ctext"><b>${f.label.toUpperCase()}</b><small>${f.id === 'tutorial' ? 'Tutorial Floor' : f.playable ? 'Main Floor' : 'Main Floor (locked)'}</small></div>${btn}</div>`;
+    const here = G.scene && ((G.scene.floor && G.scene.floor.id) || (G.scene.dun && G.scene.dun.floor)) || 'floor1';
+    const sel = towerFloor || (here === 'tutorial' ? 'floor1' : here);
+    const cleared = (id) => (id === 'tutorial' ? !!p.flags.trialCleared : !!p.flags[id + 'Cleared']);
+    const unlocked = (i) => i <= 1 ? (i === 0 || cleared('tutorial')) : cleared(TOWER[i - 1].id);
+    const floors = TOWER.map((f, i) => {
+      const cur = here === f.id;
+      const ds = dungeonsOf(f.id);
+      const done = ds.filter((d) => p.flags['cleared_' + d.id]).length;
+      const open = unlocked(i);
+      const btn = `<button class="btn small" data-act="travel" data-id="${f.id}">${cur ? 'RESTART FLOOR' : open ? 'TRAVEL' : 'TRAVEL (DEMO)'}</button>`;
+      const sub = f.id === 'tutorial' ? 'Tutorial Floor' : `${cleared(f.id) ? 'CLEARED' : open ? 'OPEN' : 'LOCKED'}${ds.length ? ` - ${done}/${ds.length} dungeons done` : ''}`;
+      return `<div class="card ${cur ? 'equipped' : ''} ${open ? '' : 'locked'}"><div class="ctext"><b>${esc(FLOORS[f.id] ? FLOORS[f.id].name.toUpperCase() : f.label.toUpperCase())}</b><small>${sub}</small></div>
+        <button class="btn small ghost" data-act="towerSel" data-id="${f.id}">DUNGEONS</button>${btn}</div>`;
     }).join('');
-    const list = Object.values(DUNGEONS).filter((d) => d.floor === 'floor1').map((d) => {
-      const hidden = d.kind === 'hidden' && !p.flags.hiddenFound;
+    const list = dungeonsOf(sel).map((d) => {
+      const hidden = d.kind === 'hidden' && !p.flags['seen_' + d.id];
       const done = p.flags['cleared_' + d.id];
       const label = hidden ? '???' : d.name;
       const kind = hidden ? 'HIDDEN' : d.kind === 'main' ? 'MAIN' : d.kind.toUpperCase();
       return `<div class="drow"><span class="k k-${hidden ? 'hidden' : d.kind}">${kind}</span> <b>${esc(label)}</b> <span style="color:${hidden ? '#8a7a99' : RANK_COLORS[d.rank]}">${hidden ? '' : 'RANK ' + d.rank}</span> ${done ? '<em class="ok">CLEARED</em>' : ''}</div>`;
     }).join('');
-    return `<p class="hint">The Tower has 11 Floors: 1 Tutorial Floor and 10 Main Floors. Floors are the story's segments/acts. This demo has the Tutorial Floor and Floor 1.</p>
+    const fname = FLOORS[sel] ? FLOORS[sel].name.toUpperCase() : sel.toUpperCase();
+    return `<p class="hint">The Tower has 11 Floors: 1 Tutorial Floor and 10 Main Floors. Clear a floor's main dungeon to open its stairs up. (Floors 2-10 are placeholder designs until the plan fills them in.)</p>
       <div class="cards">${floors}</div>
-      <h3>FLOOR 1 DUNGEONS</h3>${list}
+      <h3>${esc(fname)}: DUNGEONS</h3>${list || '<p class="hint">No dungeons here, just the way up.</p>'}
       <div class="drow"><span class="k k-double">DOUBLE</span> <b>Rifts</b> <em>appear rarely inside preset (very low chance) and randomized (low chance) dungeons</em></div>`;
   }
 
   // ---- HELP: controls + guidance options
+  const kt = (keys, text) => `<div class="kt"><div class="kk">${keys.map((k) => `<kbd>${k}</kbd>`).join('')}</div><span>${text}</span></div>`;
   function rHelp() {
     const S = G.settings;
     const on = (v) => (v ? 'ON' : 'OFF');
     return `
-      <h3>HOW TO PLAY</h3>
-      <table class="stats">
-        ${row('Move', 'WASD / Arrows  |  left thumb')}${row('Aim', 'Mouse  |  drag the ATTACK button')}
-        ${row('Attack / Focus / Cast', 'Left click (hold)  |  hold ATTACK')}
-        ${row('Dodge', 'SPACE  |  DODGE')}${row('Skills', '1  2  3  |  tap the skill buttons')}
-        ${row('Berserk (Sword Aura)', 'R  |  AURA')}${row('Swap weapon', 'Q  |  SWAP')}
-        ${row('Use / Open / Read', 'E  |  USE (appears near things)')}${row('Full map', 'M  |  tap the minimap')}
-        ${row('Menu', 'TAB / ESC  |  MENU')}${row('Sound', 'N')}
-      </table>
+      <h3>CONTROLS</h3>
+      <div class="keytable">
+        ${kt(['W', 'A', 'S', 'D'], 'Move (arrow keys work too)')}${kt(['MOUSE'], 'Aim')}
+        ${kt(['CLICK'], 'Attack. Hold to Focus / Cast')}${kt(['SPACE'], 'Dodge roll')}
+        ${kt(['1', '2', '3'], 'Skill slots (LOADOUT tab)')}
+        ${kt(['R'], 'Sword Aura (Berserk)')}${kt(['Q'], 'Swap weapon')}${kt(['SHIFT', 'WHEEL'], 'Swap weapon')}
+        ${kt(['WHEEL'], 'Zoom in / out')}${kt(['E'], 'Use / open / read')}
+        ${kt(['M'], 'Full map')}${kt(['TAB'], 'Menu (ESC too)')}${kt(['N'], 'Sound on / off')}
+      </div>
+      <p class="hint">Touch: left thumb moves, drag the ATTACK button to aim, DODGE / AURA / SWAP / USE buttons on the right, skills in the arc above them.</p>
       <p class="hint">Tip: the yellow arrow always points at your next goal. If you ever feel lost, just follow it.</p>
       <h3>ENEMIES</h3>
       <table class="stats">
@@ -355,6 +385,7 @@ export function createUI() {
         <label>MUSIC <input id="musicVol" type="range" min="0" max="100" step="5" value="${Math.round((S.musicVol == null ? 0.7 : S.musicVol) * 100)}"> <b id="musicVolv">${Math.round((S.musicVol == null ? 0.7 : S.musicVol) * 100)}</b></label>
         <label>EFFECTS <input id="sfxVol" type="range" min="0" max="100" step="5" value="${Math.round((S.sfxVol == null ? 1 : S.sfxVol) * 100)}"> <b id="sfxVolv">${Math.round((S.sfxVol == null ? 1 : S.sfxVol) * 100)}</b></label>
         <button class="btn small" data-act="toggleSound">SOUND: <b>${G.muted ? 'OFF' : 'ON'}</b></button>
+        <label>SCREEN SHAKE <input id="shakeAmt" type="range" min="0" max="100" step="5" value="${Math.round((S.shake == null ? 0.3 : S.shake) * 100)}"> <b id="shakeAmtv">${Math.round((S.shake == null ? 0.3 : S.shake) * 100)}</b></label>
       </div>
       <h3>GUIDE &amp; DISPLAY</h3>
       <div class="row">
@@ -363,7 +394,9 @@ export function createUI() {
         <button class="btn small" data-act="setOpt" data-k="autoAim">AUTO-AIM (TOUCH): <b>${on(S.autoAim)}</b></button>
       </div>
       <div class="row">
-        <button class="btn small" data-act="setOpt" data-k="zoom">ZOOM: <b>${S.zoom === 'auto' ? 'AUTO' : S.zoom + 'X'}</b></button>
+        <button class="btn small" data-act="setOpt" data-k="zoom">ZOOM: <b>${S.zoom === 'auto' ? 'AUTO' : S.zoom + 'X'}</b> <i>(mouse wheel)</i></button>
+        <button class="btn small" data-act="setOpt" data-k="hudScale">HUD SIZE: <b>${S.hudScale === 'auto' || !S.hudScale ? 'AUTO' : S.hudScale + 'X'}</b></button>
+        <button class="btn small" data-act="setOpt" data-k="sway">CAMERA SWAY: <b>${S.sway === 0 ? 'OFF' : S.sway >= 1 ? 'HIGH' : S.sway > 0.3 && S.sway < 1 ? 'LOW' : 'MID'}</b></button>
         <button class="btn small" data-act="setOpt" data-k="touch">TOUCH BUTTONS: <b>${String(S.touch).toUpperCase()}</b></button>
         <button class="btn small" data-act="resetTips">SHOW TIPS AGAIN</button>
       </div>`;
@@ -378,7 +411,7 @@ export function createUI() {
       <div class="row">
         <button class="btn small" data-act="xp">+200 XP</button>
         <button class="btn small" data-act="heal">FULL HEAL</button>
-        <button class="btn small" data-act="unlock">UNLOCK STAIRS</button>
+        <button class="btn small" data-act="unlock">UNLOCK ALL STAIRS</button>
       </div>
       <div class="row">
         <button class="btn small" data-act="toggleDouble">DOUBLE DUNGEON RIFTS: <b>${p.demo.doubleAlways ? 'ALWAYS' : 'RARE (NORMAL)'}</b></button>
@@ -395,11 +428,13 @@ export function createUI() {
     tab(el) { tab = el.dataset.id; sfx('ui'); render(); },
     setOpt(el) {
       const k = el.dataset.k, S = G.settings;
-      if (k === 'zoom') S.zoom = { auto: '2', 2: '3', 3: '4', 4: 'auto' }[S.zoom] || 'auto';
+      if (k === 'zoom') S.zoom = { auto: '2', 2: '3', 3: '4', 4: '5', 5: '6', 6: 'auto' }[S.zoom] || 'auto';
+      else if (k === 'hudScale') S.hudScale = { auto: '1', 1: '2', 2: '3', 3: 'auto' }[S.hudScale || 'auto'] || 'auto';
+      else if (k === 'sway') S.sway = (S.sway == null ? 0.5 : S.sway) <= 0 ? 0.25 : S.sway < 0.5 ? 0.5 : S.sway < 1 ? 1 : 0;
       else if (k === 'touch') S.touch = { auto: 'on', on: 'off', off: 'auto' }[S.touch] || 'auto';
       else S[k] = !S[k];
       saveSettings(); sfx('ui');
-      if (k === 'touch' && G.relayout) G.relayout();
+      if ((k === 'touch' || k === 'hudScale') && G.relayout) G.relayout();
       if (k === 'zoom' && G.scene && G.scene.applyZoom) G.scene.applyZoom();
       if (k === 'minimap' && G.hud) G.hud.setMiniVisible(S.minimap);
       render();
@@ -418,6 +453,21 @@ export function createUI() {
     unequipTrait(el) {
       const p = G.profile;
       p.traits = p.traits.filter((t) => t !== el.dataset.id);
+      sfx('ui'); afterChange();
+    },
+    towerSel(el) { towerFloor = el.dataset.id; sfx('ui'); render(); },
+    filter(el) { traitFilter = el.dataset.id; sfx('ui'); render(); },
+    preset(el) {
+      const p = G.profile;
+      if (el.dataset.id === 'clear') p.traits = [];
+      else {
+        const pr = PRESETS.find((x) => x.id === el.dataset.id);
+        if (!pr) return;
+        p.traits = [...pr.traits];
+        if (pr.id === 'ranger' && WEAPONS[p.weapon] && WEAPONS[p.weapon].cls === 'melee') toast('Ranger setup works best with a bow or gun (WEAPONS tab).', 'tip');
+        if (pr.id === 'mage' && p.manaCircles <= 0) toast('Mage setup needs a Mana Circle (MAGIC tab).', 'tip');
+      }
+      p.awakened = false; G.firstRun = false;
       sfx('ui'); afterChange();
     },
     equipWeapon(el) {
@@ -449,7 +499,11 @@ export function createUI() {
     setLevel() { setLevel(G.profile, +$menu.querySelector('#lvl').value); G.pendingHeal = true; afterChange(); },
     xp() { addXp(G.profile, 200, 1, G.rng); G.pendingHeal = true; afterChange(); },
     heal() { G.pendingHeal = true; toast('Fully healed.', 'good'); },
-    unlock() { G.profile.flags.trialCleared = true; toast('Stairs to Floor 1 unlocked (re-enter the floor to see it).', 'good'); afterChange(); },
+    unlock() {
+      G.profile.flags.trialCleared = true;
+      for (let i = 1; i <= 10; i++) G.profile.flags['floor' + i + 'Cleared'] = true;
+      toast('All stairs unlocked (re-enter the floor to see them).', 'good'); afterChange();
+    },
     toggleDouble() { G.profile.demo.doubleAlways = !G.profile.demo.doubleAlways; afterChange(); },
     toggleSound() { G.muted = !G.muted; afterChange(); },
     reset() {
@@ -469,6 +523,7 @@ export function createUI() {
   });
   root.addEventListener('input', (e) => {
     if (e.target.id === 'lvl') root.querySelector('#lvlv').textContent = e.target.value;
+    if (e.target.id === 'shakeAmt') { G.settings.shake = +e.target.value / 100; root.querySelector('#shakeAmtv').textContent = e.target.value; }
     if (e.target.id === 'musicVol' || e.target.id === 'sfxVol') {
       G.settings[e.target.id] = +e.target.value / 100;
       root.querySelector('#' + e.target.id + 'v').textContent = e.target.value;
@@ -476,6 +531,7 @@ export function createUI() {
     }
   });
   root.addEventListener('change', (e) => {
+    if (e.target.id === 'shakeAmt') saveSettings();
     if (e.target.id === 'musicVol' || e.target.id === 'sfxVol') {
       saveSettings();
       if (e.target.id === 'sfxVol') sfx('hit', { weapon: 'training_sword', mat: 'bone' }); // let them hear the new level
@@ -514,7 +570,8 @@ export function createUI() {
     const line2html = line2.replace(/^of\s+/i, '').length !== line2.length
       ? `<i>${esc(line2.match(/^of/i)[0].toUpperCase())}</i> ${brackets(line2.replace(/^of\s+/i, '').toUpperCase())}`
       : brackets(line2.toUpperCase());
-    const summary = save ? `LV ${save.level}  -  RANK ${rankOfLevel(save.level)}  -  ${save.kills || 0} KILLS` : '';
+    const tipIdx0 = Math.floor(Math.random() * TIPS.length);
+    const summary = save ? `<span>LV <b>${save.level}</b></span><span>RANK <b>${rankOfLevel(save.level)}</b></span><span><b>${save.kills || 0}</b> KILLS</span>` : '';
     $title.innerHTML = `
       <div class="tt-wrap">
         <button class="tt-snd" data-act="sound">SOUND: <b>${G.muted ? 'OFF' : 'ON'}</b></button>
@@ -524,22 +581,27 @@ export function createUI() {
             <div class="tt-tag">ELEVEN FLOORS. ONE WAY UP.</div>
           </div>
           <div class="tt-bottom">
-            <div class="tt-btns">
-              ${save
+            <div class="tt-panel">
+              <div class="tt-btns">
+                ${save
     ? `<button class="tt-btn primary" data-act="cont">CONTINUE</button>
-                 <div class="tt-save">${summary}</div>
-                 <button class="tt-btn" data-act="start" data-confirm="1">NEW GAME</button>`
+                   <div class="tt-save">${summary}</div>
+                   <button class="tt-btn" data-act="start" data-confirm="1">NEW GAME</button>`
     : '<button class="tt-btn primary" data-act="start">START</button>'}
+              </div>
             </div>
-            <div class="tt-tip"><span id="tt-tip">${esc(TIPS[Math.floor(Math.random() * TIPS.length)])}</span></div>
-            <div class="tt-keys"><span class="kb">WASD move  -  MOUSE aim + attack  -  SPACE dodge  -  E use  -  TAB menu</span><span class="tc">Left thumb moves  -  ATTACK and DODGE on the right</span></div>
+            <div class="tt-tip"><p><b>TIP</b><span id="tt-tip">${esc(TIPS[tipIdx0])}</span></p></div>
+            <div class="tt-keys">
+              <span class="kpc"><span class="kk"><kbd>WASD</kbd>MOVE</span><span class="kk"><kbd>CLICK</kbd>ATTACK</span><span class="kk"><kbd>SPACE</kbd>DODGE</span><span class="kk"><kbd>1-3</kbd>SKILLS</span><span class="kk"><kbd>E</kbd>USE</span><span class="kk"><kbd>TAB</kbd>MENU</span></span>
+              <span class="ktc"><span class="kk"><kbd>LEFT</kbd>MOVE</span><span class="kk"><kbd>RIGHT</kbd>ATTACK + DODGE</span></span>
+            </div>
           </div>
         </div>
-        <div class="tt-hint" id="tt-hint">TAP ANYWHERE FOR SOUND</div>
-        <div class="tt-ver">DEMO  -  PLACEHOLDER TITLE</div>
+        <div class="tt-hint" id="tt-hint"><span class="kpc">CLICK</span><span class="ktc">TAP</span> ANYWHERE FOR SOUND</div>
+        <div class="tt-ver"><b>DEMO BUILD</b><span>WORKING TITLE</span></div>
       </div>`;
     $title.classList.remove('hidden', 'leaving');
-    let going = false, eraseTimer = 0, tipIdx = Math.floor(Math.random() * TIPS.length);
+    let going = false, eraseTimer = 0, tipIdx = tipIdx0;
 
     // rotating tip + the "tap for sound" hint (goes away once the music has started)
     const tipEl = $title.querySelector('#tt-tip'), hintEl = $title.querySelector('#tt-hint');

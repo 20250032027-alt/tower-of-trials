@@ -106,8 +106,8 @@ export function titleMetrics(sw, sh) {
   const door = {                                              // gate centre-bottom on the wall, and its top
     foot: project(cam, 0, 0, -towerR(0)), top: project(cam, 0, Wd.DOOR_H, -towerR(0)),
   };
-  const moon = portrait ? { x: Math.round(W * 0.79), y: Math.round(H * 0.385), r: Math.max(5, Math.round(W * 0.055)) }
-    : { x: Math.round(W * 0.47), y: Math.round(H * 0.33), r: Math.max(6, Math.round(H * 0.065)) };
+  const moon = portrait ? { x: Math.round(W * 0.79), y: Math.round(H * 0.385), r: Math.max(6, Math.round(W * 0.07)) }
+    : { x: Math.round(W * 0.5), y: Math.round(H * 0.3), r: Math.max(7, Math.round(H * 0.085)) };
   return { Z, W, H, portrait, cam, hero, beacon, door, moon, pad: 10 };
 }
 

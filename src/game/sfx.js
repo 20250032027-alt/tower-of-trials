@@ -356,6 +356,13 @@ const SOUNDS = {
     thump(110, 0.14, 0.1);
     for (let i = 0; i < 3; i++) click(rnd(900, 1600), 0.05, rnd(0, 0.08));
   },
+  thunder: () => { // a sharp crack, then a long low roll that grumbles and fades
+    nz({ ft: 'highpass', f0: 1800, f1: 600, dur: 0.12, vol: 0.05, atk: 0.003, verb: 0.3 });
+    nz({ ft: 'lowpass', f0: 900, f1: 120, dur: 1.9, vol: 0.14, atk: 0.12, q: 0.5, verb: 0.5 });
+    nz({ ft: 'lowpass', f0: 500, f1: 90, dur: 1.5, vol: 0.1, atk: 0.4, delay: 0.5, q: 0.4, verb: 0.5 });
+    osc({ type: 'sine', f0: 62, f1: 34, dur: 1.6, vol: 0.12, atk: 0.1, verb: 0.2 });
+    thump(70, 0.16, 0.5, 0.35, 0.3);
+  },
   crumble: () => {
     nz({ ft: 'lowpass', f0: 600, f1: 200, dur: 0.7, vol: 0.12, atk: 0.08, verb: 0.3 });
     thump(80, 0.2, 0.3);
@@ -370,7 +377,7 @@ const META = {
   hit: { gap: 30, pv: 0.07 }, crit: { gap: 30, pv: 0.05 }, swing: { gap: 40 }, heavy: { gap: 40 },
   shoot: { gap: 40 }, gun: { gap: 40 }, kill: { gap: 60, prio: true, g: 1.8 },
   hurt: { prio: true, duck: 0.5, pv: 0.05, g: 1.5 },
-  levelup: { prio: true, duck: 0.6, pv: 0, g: 1.4 }, berserk: { prio: true, duck: 0.5, pv: 0.03, g: 1.1 }, crumble: { prio: true, duck: 0.4 },
+  levelup: { prio: true, duck: 0.6, pv: 0, g: 1.4 }, berserk: { prio: true, duck: 0.5, pv: 0.03, g: 1.1 }, crumble: { prio: true, duck: 0.4 }, thunder: { prio: true, duck: 0.3, pv: 0.1, g: 1.2 },
   rare: { prio: true, duck: 0.4, pv: 0, g: 1.1 }, portal: { duck: 0.3, pv: 0.02 },
   xp: { gap: 24, pv: 0, soft: true, g: 2.4 }, step: { gap: 60, pv: 0.12, soft: true, g: 6 },
   erattle: { gap: 120, pv: 0.1, soft: true, g: 10 }, heartbeat: { soft: true, pv: 0.02, g: 0.7 },

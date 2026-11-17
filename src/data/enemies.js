@@ -16,7 +16,7 @@ export const ENEMIES = {
     critRate: 0.1,
     critDamage: 1.25,
     // behaviour [PLACEHOLDER]
-    moveSpeed: 54,
+    moveSpeed: 60,
     // awareness [PLACEHOLDER]: notices you in its own room (line of sight) or when you are right beside it
     sightRange: 220,   // farthest it can see you, only inside its own room
     earRange: 34,      // it hears you this close even without line of sight

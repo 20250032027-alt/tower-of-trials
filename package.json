@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Tower of [Trials] - top-down pixel action demo (placeholder title)",
-  "homepage": "https://20250032027-alt.github.io/tower-of-trials/",
+  "homepage": "https://YOUR-GITHUB-USERNAME.github.io/YOUR-REPO-NAME/",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

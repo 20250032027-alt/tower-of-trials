@@ -4,7 +4,7 @@
 import { RANK_COLORS, xpToNext, LEVEL_MAX, BERSERK } from '../data/constants.js';
 import { G } from '../game/state.js';
 import { Controls } from './controls.js';
-import { icon, WEAPON_ICON, skillGlyph } from './icons.js';
+import { icon, WEAPON_ICON, traitIcon, SHORT, glyph } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -44,6 +44,10 @@ export function createHudDom() {
     </div>
     <div class="h-bl">
       <img class="wi" alt=""><div><div class="wn"></div><div class="wx"></div></div>
+    </div>
+    <div class="h-br keyhints">
+      <span><kbd>SPACE</kbd>DODGE</span><span><kbd>R</kbd>AURA</span><span><kbd>Q</kbd>SWAP</span>
+      <span><kbd>E</kbd>USE</span><span><kbd>WHEEL</kbd>ZOOM</span><span><kbd>TAB</kbd>MENU</span>
     </div>
     <div id="bigmap" class="hidden"><div class="panel"><canvas></canvas><div class="foot">TAP OR PRESS M TO CLOSE</div></div></div>`;
 
@@ -211,12 +215,12 @@ export function createHudDom() {
       const b = $skills[i];
       const si = player.skillInfo(i);
       const empty = !si.trait, locked = si.trait && !si.skill;
-      const nm = empty ? '-' : locked ? '?' : si.trait.name.split(/[ ']/).filter(Boolean)[0].slice(0, 7).toUpperCase();
+      const nm = empty ? 'EMPTY' : locked ? '?' : (SHORT[si.trait.id] || si.trait.name.split(/[ ']/).filter(Boolean)[0].slice(0, 7).toUpperCase());
       const onCd = si.skill && si.cd > 0;
       setText(b.querySelector('.nm'), 'nm' + i, onCd ? '' : nm);
       setText(b.querySelector('.cd'), 'cd' + i, onCd ? (si.cd >= 10 ? String(Math.ceil(si.cd)) : si.cd.toFixed(1)) : '');
       const gimg = b.querySelector('.gl');
-      const gsrc = locked || empty ? '' : skillGlyph(si.skill.kind);
+      const gsrc = locked || empty ? '' : traitIcon(si.trait.id, 2);
       if (last['gl' + i] !== gsrc) { last['gl' + i] = gsrc; if (gsrc) gimg.src = gsrc; gimg.style.visibility = gsrc ? 'visible' : 'hidden'; }
       gimg.style.opacity = onCd ? '.35' : '1';
       const fill = b.querySelector('u');

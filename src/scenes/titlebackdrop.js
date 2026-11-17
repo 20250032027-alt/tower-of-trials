@@ -1,9 +1,11 @@
 // The animated vista behind the title menu: a low-angle, tilted (Dutch angle) view up the Tower. The sky, the Tower and the
 // paving are ray-cast once into pixel buffers (art/titleworld.js); this file adds the living parts on top - parallax,
-// twinkling stars, drifting clouds, torches, lit windows, a beacon beam, skeleton guards, the hero, bats that orbit the
-// spire (passing behind and in front of it), mist and embers. `enter()` plays the "gate opens, camera pushes in" sequence.
+// twinkling stars, a blood moon, storm clouds with lightning and thunder, crows crossing the sky, a skeleton march on the
+// far ridge, a graveyard with wisps and watching eyes, torches, lit windows, a beacon beam, skeleton guards, the hero, bats that
+// orbit the spire (passing behind and in front of it), rolling mist, ash and embers. `enter()` plays the "gate opens, camera
+// pushes in" sequence.
 import Phaser from 'phaser';
-import { titleMetrics, litTiers, project, WORLD, towerR, BEACON_POS, APEX_Y } from '../logic/titlelayout.js';
+import { titleMetrics, litTiers, project, rayDir, WORLD, towerR, BEACON_POS, APEX_Y } from '../logic/titlelayout.js';
 import * as A from '../art/titlescene.js';
 import * as W from '../art/titleworld.js';
 import { Pix } from '../art/pixel.js';
@@ -16,6 +18,7 @@ const AMP = { sky: 1.4, far: 3, near: 5, back: 8, stage: 8, fore: 13 };
 const DEPTH = { sky: 0, far: 2, near: 4, back: 5, stage: 6, fore: 8 };
 const PHI0 = -Math.PI / 2;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const makeRngLocal = (rng) => () => rng.next();
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
 export class TitleBackdrop {
@@ -43,6 +46,14 @@ export class TitleBackdrop {
     this.objs = [];
     for (const k of this.keys) if (this.s.textures.exists(k)) this.s.textures.remove(k);
     this.keys = [];
+  }
+
+  /** Where the ground is under picture point (sx, sy) (unpadded): its range along the ray, or null above the horizon. */
+  groundAt(sx, sy) {
+    const d = rayDir(this.m.cam, sx + 0.5, sy + 0.5, [0, 0, 0]);
+    if (d[1] > -0.02) return null;
+    const t = WORLD.CAM_H / -d[1];
+    return { x: d[0] * t, z: d[2] * t - WORLD.CAM_D, t };
   }
 
   /** A point of the world on the picture, in padded layer coordinates. */
@@ -86,8 +97,39 @@ export class TitleBackdrop {
       return { im: add('sky', this.tex('tt_cloud' + i, A.makeCloud(w, h, 40 + i)), x0, by, { alpha: 0.85 }), w, sp, by, x: x0 };
     });
     this.shoot = { next: 2.5 + rng.next() * 4 };
-    add('far', this.tex('tt_mtn0', W.renderSky(m, 1)), 0, 0);
+    // the blood moon breathes: a wide red halo that swells and shrinks, very slowly
+    const mr = m.moon.r, mg = Z * (mr * 6.4) / 48;
+    this.moonGlow = add('sky', 'fx_glow', X(m.moon.x), m.moon.y, { ox: 0.5, oy: 0.5, sx: mg, sy: mg, add: true, tint: 0xff2a22, alpha: 0.2, mg });
+
+    // storm clouds massing in the open sky, with a lit twin of each that fades in when lightning strikes
+    this.storm = [[0.44, 0.19, 0.012, -1.7], [0.3, 0.14, 0.03, -2.6], [0.24, 0.16, 0.2, -1.2], [0.36, 0.2, 0.34, -2.1]].map(([wf, hf, yf, sp], i) => {
+      const w = Math.max(40, Math.round(m.W * wf)), h = Math.max(14, Math.min(30, Math.round(m.H * hf)));
+      const dark = this.tex('tt_storm' + i, A.makeStormCloud(w, h, 11 + i * 5)), litK = this.tex('tt_storml' + i, A.makeStormCloud(w, h, 11 + i * 5, true));
+      const x0 = Math.round(m.W * (0.04 + 0.28 * i) + rng.int(-6, 6)), by = Math.round(m.H * yf);
+      return { im: add('sky', dark, x0, by), lit: add('sky', litK, x0, by, { alpha: 0 }), w, h, sp, by, x: x0 };
+    });
+    this.bolt = { im: null, t: 99, next: this.calm ? 1e9 : 3.4 + rng.next() * 2.2, n: 0 };
+    this.flashIm = s.add.image(0, 0, 'tt_px').setOrigin(0, 0).setDisplaySize(sw, sh).setBlendMode(Phaser.BlendModes.ADD).setTint(0x8aa0ff).setAlpha(0).setDepth(15);
+    this.objs.push(this.flashIm);
+
+    const farPix = W.renderSky(m, 1);
+    add('far', this.tex('tt_mtn0', farPix), 0, 0);
     add('near', this.tex('tt_mtn1', W.renderSky(m, 2)), 0, 0);
+    // where the far ridge is, column by column, so things can stand on it
+    const ridge = new Int16Array(m.W + m.pad * 2);
+    for (let x = 0; x < ridge.length; x++) { let y = 0; while (y < m.H && !farPix.solid(x, y)) y++; ridge[x] = y; }
+    this.ridge = ridge;
+    // a broken watchtower with one lit window, and a slow column of skeletons with lanterns marching toward the Tower
+    this.tex('tt_ruin', A.makeRuin());
+    const rx = Math.round(m.W * 0.6) + m.pad;
+    add('far', 'tt_ruin', rx, ridge[rx + 8] - 11);
+    this.ruinGlow = add('far', 'fx_glow', rx + 5.5, ridge[rx + 8] - 7, { ox: 0.5, oy: 0.5, sx: Z * 0.5, sy: Z * 0.5, add: true, tint: 0xff8a30, alpha: 0.4 });
+    for (const k of [0, 1, 2]) for (const f of [0, 1]) this.tex(`tt_march${k}${f}`, A.makeMarcher(f, k));
+    const N = m.portrait ? 6 : 10, gap = m.portrait ? 12 : 13;
+    this.march = { x: m.W * (m.portrait ? 0.62 : 0.56) + m.pad, gap, sp: 3.2, units: Array.from({ length: N }, (_, i) => {
+      const kind = i % 3 === 1 ? 1 : i % 3 === 0 ? 0 : 2;
+      return { im: add('far', `tt_march${kind}0`, 0, 0), kind, ph: rng.next() * 3, glow: kind === 1 ? add('far', 'fx_glow', 0, 0, { ox: 0.5, oy: 0.5, sx: Z * 0.2, sy: Z * 0.2, add: true, tint: 0xffa040, alpha: 0.7 }) : null, off: i * gap + rng.int(-2, 2) };
+    }) };
 
     // ---- the ray-cast tower + paving
     const world = W.renderWorld(m, lit);
@@ -101,6 +143,50 @@ export class TitleBackdrop {
       const d = Math.max(5, w.w * 2.6 + 4), sc = Z * d / 48;
       return { w, im: add('stage', 'fx_glow', X(w.x), w.y, { ox: 0.5, oy: 0.5, sx: sc, sy: sc, add: true, tint: w.lit ? 0xffc860 : 0xffd890, alpha: 0 }), ph: rng.next() * 6 };
     });
+
+    // ---- the graveyard on the open ground to the right: stones, crosses and broken pillars standing on the ground plane
+    // (sizes are whole-pixel sprites picked by distance, never scaled), soul-flames hovering over a few, red eyes in the dark
+    this.graves = []; this.wisps = [];
+    {
+      const tried = [], gr = makeRngLocal(rng);
+      const cache = new Map();
+      for (let i = 0; i < 400 && this.graves.length < (m.portrait ? 16 : 30); i++) {
+        const sx = m.W * (m.portrait ? 0.04 + gr() * 0.92 : 0.43 + gr() * 0.56), sy = horizon + 6 + gr() * (m.H - horizon - 12);
+        const g = this.groundAt(sx, sy);
+        if (!g) continue;
+        const kind = Math.floor(gr() * 3), hw = 1.0 + gr() * 0.9, h = Math.round(cam.F * hw / g.t);
+        if (h < 4 || h > (m.portrait ? 18 : 24)) continue;
+        if (Math.abs(g.x) < 4.4 && g.z < 0) continue;        // keep the path to the gate clear
+        if (tried.some((q) => Math.hypot((q.x - sx) * 1.0, (q.y - sy) * 1.7) < Math.max(9, h * 1.2))) continue;
+        if (!m.portrait && (sx < m.W * 0.44 || (sy < horizon + 4))) continue;
+        if (m.portrait && sy > m.H * 0.9) continue;
+        tried.push({ x: sx, y: sy });
+        const key = `tt_grave${kind}_${h}`;
+        if (!cache.has(key)) cache.set(key, this.tex(key, A.makeGrave(h, kind)));
+        this.graves.push({ x: sx, y: sy, h, kind, key });
+      }
+      this.graves.sort((a, b) => a.y - b.y);
+      for (const g of this.graves) {
+        const w = Math.max(3, Math.round(g.h * (g.kind === 1 ? 0.8 : 0.66))) + 2;
+        const sw2 = Math.round(w * 1.5), sk = `tt_gshadow${sw2}`;
+        if (!cache.has(sk)) cache.set(sk, this.tex(sk, A.shadowBlob(sw2)));
+        add('stage', sk, Math.round(X(g.x)) - Math.round(sw2 / 2), Math.round(g.y) - 1);
+        add('stage', g.key, Math.round(X(g.x)) - Math.round(w / 2), Math.round(g.y) - g.h - 1);
+      }
+      this.tex('tt_wisp', A.px1());
+      const picks = this.graves.filter((g, i) => g.h >= 6 && i % 3 === 0).slice(0, m.portrait ? 3 : 6);
+      this.wisps = picks.map((g) => ({
+        x: X(g.x), y: g.y - g.h - 5, ph: gr() * 6.28,
+        halo: add('stage', 'fx_glow', 0, 0, { ox: 0.5, oy: 0.5, sx: Z * 0.34, sy: Z * 0.34, add: true, tint: 0x6ff0d6, alpha: 0.5 }),
+        core: add('stage', 'tt_wisp', 0, 0, { tint: 0xd8fff6 }),
+      }));
+      // pairs of red eyes that open and close out in the dark
+      this.eyes = Array.from({ length: m.portrait ? 3 : 5 }, (_, i) => ({
+        a: add('stage', 'tt_wisp', 0, 0, { tint: 0xff3a30, alpha: 0 }), b: add('stage', 'tt_wisp', 0, 0, { tint: 0xff3a30, alpha: 0 }),
+        halo: add('stage', 'fx_glow', 0, 0, { ox: 0.5, oy: 0.5, sx: Z * 0.2, sy: Z * 0.2, add: true, tint: 0xff2a20, alpha: 0 }),
+        t: gr() * 6, open: false, x: 0, y: 0, i,
+      }));
+    }
 
     // ---- the gate: torches either side, light on the steps, guards, the hero
     const R0 = towerR(0), tOff = WORLD.DOOR_HW + 1.2;
@@ -131,6 +217,10 @@ export class TitleBackdrop {
     this.tex('tt_bat0', A.makeBat(0)); this.tex('tt_bat1', A.makeBat(1));
     this.bats = [0, 1, 2, 3].map((i) => ({ im: add('stage', 'tt_bat0', 0, 0), rad: 7.5 + (i % 3) * 1.6, yy: APEX_Y - 11 + i * 2.4, sp: 0.5 + i * 0.13, ph: i * 1.7, f: 0, layer: 'stage' }));
 
+    // ---- a flock of crows now and then crosses the sky (in front of the moon, behind the Tower)
+    this.tex('tt_crow0', A.makeCrow(0)); this.tex('tt_crow1', A.makeCrow(1));
+    this.flock = { next: 4.5, crows: Array.from({ length: 8 }, (_, i) => ({ im: add('back', 'tt_crow0', 0, 0, { alpha: 0 }), i, on: false, f: 0 })), x: 0, y: 0, dir: -1, live: false };
+
     // ---- foreground: dead trees framing the corners, mist, motes
     const th = Math.round(m.H * 0.3);
     add('fore', this.tex('tt_treeL', A.makeDeadTree(th, 4)), X(-2), m.H - th - 1);
@@ -138,13 +228,15 @@ export class TitleBackdrop {
     add('fore', this.tex('tt_treeR', A.makeDeadTree(th2, 8, true)), X(m.W - Math.round(th2 * 0.8) + 2), m.H - th2);
     const fw = m.W + m.pad * 2;
     this.fogs = [
-      { y: Math.round(horizon) - 8, a: 0.4, sp: 2.2, seed: 1, h: 16 },
-      { y: m.H - 13, a: 0.45, sp: -1.8, seed: 2, h: 14 },
+      { y: Math.round(horizon) - 8, a: 0.4, sp: 2.2, seed: 1, h: 16, L: 'fore' },
+      { y: m.H - 13, a: 0.45, sp: -1.8, seed: 2, h: 14, L: 'fore' },
+      { y: Math.round(horizon) + 4, a: 0.38, sp: -3.4, seed: 3, h: 20, L: 'back' },     // two more banks roll through behind the Tower
+      { y: Math.round(horizon * 0.8 + m.H * 0.18), a: 0.3, sp: 4.6, seed: 4, h: 22, L: 'back' },
     ].map((f, i) => {
       const k = this.tex('tt_fog' + i, A.makeFog(fw, f.h, f.seed));
-      return { ...f, a1: add('fore', k, 0, f.y, { alpha: f.a }), a2: add('fore', k, fw, f.y, { alpha: f.a }), x: 0, fw };
+      return { ...f, a1: add(f.L, k, 0, f.y, { alpha: f.a }), a2: add(f.L, k, fw, f.y, { alpha: f.a }), x: 0, fw };
     });
-    this.pool = Array.from({ length: 48 }, () => { const im = add('fore', 'tt_px', 0, 0, { alpha: 0 }); return { im, life: 0, max: 1, x: 0, y: 0, vx: 0, vy: 0, ember: false }; });
+    this.pool = Array.from({ length: 96 }, () => { const im = add('fore', 'tt_px', 0, 0, { alpha: 0 }); return { im, life: 0, max: 1, x: 0, y: 0, vx: 0, vy: 0, ember: false }; });
     this.moteT = 0;
 
     const vg = s.add.image(sw / 2, sh / 2, 'fx_vignette').setDisplaySize(sw * 1.04, sh * 1.04).setDepth(20).setAlpha(0.6);
@@ -205,6 +297,13 @@ export class TitleBackdrop {
       this.shiftLayers(this.px);
     }
 
+    // moon breathes; storm clouds drift; lightning; crows; the march on the ridge; wisps and eyes
+    this.moonGlow.setAlpha(0.2 + 0.07 * Math.sin(t * 0.7));
+    this.ruinGlow.setAlpha(0.32 + 0.1 * Math.sin(t * 5.3) + 0.06 * Math.sin(t * 13));
+    this.updateStorm(dt);
+    this.updateFlock(dt);
+    this.updateMarch(dt);
+    this.updateGround(dt);
     for (const st of this.stars) st.im.setAlpha(0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * st.sp + st.ph)));
     // clouds drift along the tilted horizon and wrap
     for (const c of this.clouds) {
@@ -269,6 +368,13 @@ export class TitleBackdrop {
     // particles: embers from the torches, teal soul motes rising from the paving
     this.moteT -= dt;
     if (this.moteT <= 0) { this.moteT = 0.35 + Math.random() * 0.5; this.spawn(Math.random() * m.W + m.pad, this.horizonY + 6 + Math.random() * (m.H - this.horizonY - 6) * 0.9, (Math.random() - 0.5) * 3, -(3 + Math.random() * 4), 3 + Math.random() * 3, Math.random() < 0.7 ? 0x6ff0d6 : 0x9fb4ff, false); }
+    // ash and cinders blown across the whole picture on a steady wind, toward the Tower
+    this.ashT = (this.ashT || 0) - dt;
+    if (this.ashT <= 0) {
+      this.ashT = 0.07 + Math.random() * 0.12;
+      const warm = Math.random() < 0.22;
+      this.spawn(Math.random() * (m.W + m.pad) + m.pad * 0.5, Math.random() * m.H * 0.75, -(9 + Math.random() * 11), 1.5 + Math.random() * 4.5, 5 + Math.random() * 5, warm ? 0xff8a3c : 0xb9aebd, false);
+    }
     for (const p of this.pool) {
       if (p.life <= 0) continue;
       p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt;
@@ -280,11 +386,131 @@ export class TitleBackdrop {
     }
   }
 
+  // ------------------------------------------------------------------ the storm
+  updateStorm(dt) {
+    const m = this.m, Z = m.Z, span = m.W + m.pad * 2;
+    for (const c of this.storm) {
+      c.x += c.sp * dt;
+      if (c.x < -c.w) c.x = span + 4;
+      c.cy = Math.round(c.by + this.tilt * (c.x - m.W / 2) * 0.5);
+      c.im.setPosition(Math.round(c.x) * Z, c.cy * Z); c.lit.setPosition(Math.round(c.x) * Z, c.cy * Z);
+    }
+    const b = this.bolt;
+    if (this.calm || this.entering) return;
+    if (!b.im && !b.soft) {
+      b.next -= dt;
+      if (b.next <= 0) this.strike();
+      return;
+    }
+    b.t += dt;
+    const tt = b.t;
+    const f1 = tt < 0.05 ? tt / 0.05 : Math.exp(-(tt - 0.05) * 7);                  // one soft flash, then a weaker after-flicker
+    const f2 = tt > 0.26 ? 0.5 * Math.min(1, (tt - 0.26) / 0.03) * Math.exp(-(tt - 0.29) * 9) : 0;
+    const fl = Math.max(f1, f2) * (b.soft ? 0.45 : 1);
+    this.flashIm.setAlpha(b.soft ? 0 : 0.13 * fl);
+    for (const c of this.storm) c.lit.setAlpha(Math.min(0.95, fl * 1.1));
+    if (b.im) b.im.setAlpha(tt < 0.08 ? 1 : tt < 0.13 ? 0.3 : tt < 0.28 ? 0.95 : tt < 0.42 ? 0.95 * (1 - (tt - 0.28) / 0.14) : 0);
+    if (tt > 1.3) {
+      if (b.im) { b.im.destroy(); b.im = null; }
+      b.soft = false; this.flashIm.setAlpha(0);
+      for (const c of this.storm) c.lit.setAlpha(0);
+      b.next = 7 + Math.random() * 8;
+    }
+  }
+
+  /** A bolt falls from one of the clouds that is over the open sky; the thunder arrives a moment later. */
+  strike(forceBolt) {
+    const m = this.m, Z = m.Z, b = this.bolt;
+    const vis = this.storm.filter((c) => { const cx = c.x + c.w / 2 - m.pad; return cx > m.W * 0.25 && cx < m.W * 0.97; });
+    const c = vis.length ? vis[Math.floor(Math.random() * vis.length)] : this.storm[0];
+    b.t = 0; b.soft = !forceBolt && Math.random() < 0.22;
+    if (!b.soft) {
+      const bx = Math.round(c.x + c.w * (0.3 + Math.random() * 0.4)), y0 = c.cy + c.h - 5;
+      const ground = this.ridge[Math.max(0, Math.min(this.ridge.length - 1, bx))] || m.H * 0.6;
+      const len = Math.max(14, Math.min(Math.round(m.H * 0.6), ground - y0 - 1 - Math.floor(Math.random() * 5)));
+      const bolt = A.makeBolt(len, 1 + (b.n = (b.n || 0) + 1));
+      const key = this.tex('tt_bolt', bolt.pix);
+      b.im = this.add('sky', key, bx - bolt.ox, y0, { alpha: 0 });
+    }
+    const delay = (0.45 + Math.random() * 1.1) * 1000;
+    this.s.time.delayedCall(delay, () => { if (!this.entering) sfx('thunder', { vol: b.soft ? 0.45 : 0.9 }); });
+  }
+
+  // ------------------------------------------------------------------ crows
+  updateFlock(dt) {
+    const m = this.m, Z = m.Z, fk = this.flock, t = this.t, span = m.W + m.pad * 2;
+    if (!fk.live) {
+      fk.next -= dt;
+      if (fk.next > 0 || this.entering) return;
+      fk.live = true; fk.dir = Math.random() < 0.8 ? -1 : 1;
+      fk.x = fk.dir < 0 ? span + 14 : -14;
+      fk.y = Math.random() < 0.55 ? m.moon.y + (Math.random() - 0.5) * m.moon.r * 1.5 : m.H * (0.32 + Math.random() * 0.2);   // across the moon, or low over the dusk glow, where they show
+      fk.n = 5 + Math.floor(Math.random() * 4);
+      fk.crows.forEach((c, i) => { c.dx = i * (3.5 + Math.random() * 3.5); c.dy = (Math.random() - 0.5) * 11 + Math.abs(i - fk.n / 2) * 0.6; c.on = i < fk.n; });
+    }
+    fk.x += fk.dir * 26 * dt;
+    let any = false;
+    for (const c of fk.crows) {
+      if (!c.on) { c.im.setAlpha(0); continue; }
+      const cx = fk.x - fk.dir * c.dx, cy = fk.y + c.dy + Math.sin(t * 1.6 + c.i) * 1.5 + (span / 2 - fk.x) * 0.02 * fk.dir;
+      const f = Math.floor(t * 7 + c.i * 0.9) % 2;
+      if (f !== c.f) { c.f = f; c.im.setTexture('tt_crow' + f); }
+      c.im.setPosition(Math.round(cx - 3) * Z, Math.round(cy) * Z).setAlpha(1);
+      if (cx > -16 && cx < span + 16) any = true;
+    }
+    if (!any && (fk.dir < 0 ? fk.x < span * 0.5 : fk.x > span * 0.5)) { fk.live = false; fk.next = 9 + Math.random() * 12; for (const c of fk.crows) c.im.setAlpha(0); }
+  }
+
+  // ------------------------------------------------------------------ the march on the far ridge
+  updateMarch(dt) {
+    const m = this.m, Z = m.Z, mc = this.march, t = this.t, R = this.ridge;
+    mc.x -= mc.sp * dt;
+    const last = mc.units[mc.units.length - 1].off;
+    if (mc.x + last < -14) mc.x = m.W + m.pad + 12;   // (the column is long: it starts mid-picture, then loops from the right edge)
+    for (const u of mc.units) {
+      const xi = Math.round(mc.x + u.off);
+      const vis = xi > 3 && xi < R.length - 3;
+      u.im.setVisible(vis); if (u.glow) u.glow.setVisible(vis);
+      if (!vis) continue;
+      const f = Math.floor(t * 2.4 + u.ph) % 2, top = R[xi] - 8 + (f ? 0 : 1);
+      u.im.setTexture(`tt_march${u.kind}${f}`).setPosition((xi - 3) * Z, top * Z);
+      if (u.glow) u.glow.setPosition((xi + 1.5) * Z, (top + 0.5) * Z).setAlpha(0.55 + 0.2 * Math.sin(t * 8 + u.ph * 5));
+    }
+  }
+
+  // ------------------------------------------------------------------ wisps over the graves, eyes in the dark
+  updateGround(dt) {
+    const m = this.m, Z = m.Z, t = this.t;
+    for (const w of this.wisps) {
+      const x = w.x + Math.sin(t * 0.9 + w.ph) * 1.6, y = w.y + Math.sin(t * 1.3 + w.ph * 2) * 1.8 - (Math.sin(t * 0.37 + w.ph) > 0.6 ? 1 : 0);
+      w.core.setPosition(Math.round(x) * Z, Math.round(y) * Z).setAlpha(0.7 + 0.3 * Math.sin(t * 6 + w.ph));
+      w.halo.setPosition(x * Z, y * Z).setAlpha(0.32 + 0.2 * Math.sin(t * 3.1 + w.ph));
+    }
+    for (const e of this.eyes) {
+      e.t -= dt;
+      if (e.t <= 0) {
+        if (!e.open) {
+          for (let k = 0; k < 20 && !e.open; k++) {
+            const sx = m.W * (m.portrait ? Math.random() : Math.random() < 0.25 ? 0.02 + Math.random() * 0.14 : 0.46 + Math.random() * 0.5), sy = this.horizonY + 10 + Math.random() * (m.H - this.horizonY - 16);
+            if (this.groundAt(sx, sy)) { e.x = Math.round(sx) + m.pad; e.y = Math.round(sy); e.open = true; e.age = 0; e.t = 2 + Math.random() * 2.5; }
+          }
+          if (!e.open) e.t = 1;
+        } else { e.open = false; e.t = 3 + Math.random() * 6; }
+      }
+      const gap = e.y > m.H * 0.8 ? 4 : 3;
+      let a = 0;
+      if (e.open) { e.age += dt; a = Math.min(1, e.age / 0.3) * (e.t < 0.3 ? e.t / 0.3 : 1); if (Math.abs(e.age - 1.1) < 0.07) a = 0; }
+      e.a.setPosition(e.x * Z, e.y * Z).setAlpha(a); e.b.setPosition((e.x + gap) * Z, e.y * Z).setAlpha(a);
+      e.halo.setPosition((e.x + gap / 2 + 0.5) * Z, (e.y + 0.5) * Z).setAlpha(a * 0.55);
+    }
+  }
+
   // ------------------------------------------------------------------ the start sequence
   /** Guards flare, the gate swings open frame by frame, the camera pushes into the light (and levels out), then white and `done()`. */
   enter(done) {
     const s = this.s, m = this.m, Z = m.Z, cam = s.cameras.main, pad = m.pad;
     this.entering = true; this.flare = true;
+    this.flashIm.setAlpha(0);
     music.stinger('start');
     sfx('crumble', { vol: 0.8 });
     for (const g of this.guards) this.tweens.push(s.tweens.add({ targets: g.eye, alpha: 1, scaleX: Z * 0.4, scaleY: Z * 0.4, duration: 380, ease: 'Cubic.easeOut' }));

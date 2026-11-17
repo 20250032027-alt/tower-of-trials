@@ -12,10 +12,10 @@ import { playerAttack, damageAfterMitigation } from '../logic/combat.js';
 import { Berserk } from '../logic/berserk.js';
 import { focusTick } from '../logic/focus.js';
 import { addProficiency } from '../logic/progression.js';
-import { G } from './state.js';
+import { G, shakeCam } from './state.js';
 import { sfx } from './sfx.js';
 
-const BASE_SPEED = 92;
+const BASE_SPEED = 124; // was 92 (felt slow); swing/focus slow-downs below are softer to match
 // Movement feel (steep curves: reach top speed fast, stop even faster => "snappy" but not robotic)
 const ACCEL = 1250; // px/s^2 while holding a direction
 const TURN_BOOST = 1.7; // extra acceleration when reversing/turning sharply
@@ -288,8 +288,8 @@ export class Player {
     }
     let top = BASE_SPEED * this.stats.moveSpeed;
     if (this.castT > 0) top *= 0.5;
-    if (this.focusing) top *= 0.65;
-    if (this.swingT < 1) top *= 0.85;
+    if (this.focusing) top *= 0.7;
+    if (this.swingT < 1) top *= 0.92;
 
     const len = Math.hypot(inp.mx, inp.my);
     let vx = body.velocity.x, vy = body.velocity.y;
@@ -414,7 +414,7 @@ export class Player {
     this.scene.crackHit(this.x, this.y, this.aim, w.range, half);
     if (hitAny) {
       const heavy = w.id === 'training_claymore';
-      if (heavy) this.scene.cameras.main.shake(80, 0.0034);
+      if (heavy) shakeCam(this.scene, 80, 0.0034);
       this.scene.hitStop(heavy ? 78 : w.id === 'training_spear' ? 28 : 34);
       this.scene.kick(this.aim, heavy ? 4 : 2);
     }
@@ -435,7 +435,7 @@ export class Player {
     // weapon proficiency (Weapon Type Proficiency in the sheet)
     addProficiency(G.profile, w.cls, this.stats.weaponMastery);
     if (++this.hits % 8 === 0) this.refreshStats();
-    if (atk.crit) { this.scene.cameras.main.shake(70, 0.0028); this.scene.hitStop(72); this.scene.kick(this.aim, 3); }
+    if (atk.crit) { shakeCam(this.scene, 70, 0.0028); this.scene.hitStop(72); this.scene.kick(this.aim, 3); }
   }
 
   // ranger: hold to FOCUS, release to shoot
@@ -625,7 +625,7 @@ export class Player {
     if (!this.berserk.activate()) { this.deny('AURA CORE EMPTY'); return; }
     sfx('berserk');
     this.scene.ringFx(this.x, this.y, 0xff3a2a);
-    this.scene.cameras.main.shake(120, 0.004);
+    shakeCam(this.scene, 120, 0.004);
   }
 
   onKill() {
@@ -647,7 +647,7 @@ export class Player {
     this.hp -= dmg;
     this.inCombatT = COMBAT_TIMEOUT;
     sfx('hurt');
-    this.scene.cameras.main.shake(110, 0.004);
+    shakeCam(this.scene, 110, 0.004);
     this.scene.hitStop(55);
     this.scene.hud.flashHurt(Math.min(0.9, 0.5 + dmg / this.stats.maxHealth * 2));
     this.hurtFlash = 0.1;

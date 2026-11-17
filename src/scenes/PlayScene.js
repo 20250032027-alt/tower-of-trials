@@ -2,7 +2,7 @@
 // dungeons (enemies, chests, exit portal, rare double-dungeon rifts).
 
 import Phaser from 'phaser';
-import { FLOORS, DUNGEONS } from '../data/world.js';
+import { FLOORS, DUNGEONS, RIFT_OF } from '../data/world.js';
 import { ENEMIES } from '../data/enemies.js';
 import { rankRange, RANK_COLORS, DOUBLE_DUNGEON_CHANCE, rankOfLevel } from '../data/constants.js';
 import { THEMES } from '../art/tiles.js';
@@ -10,7 +10,7 @@ import { buildLayout, generateRandomDef, pickRiftSpot, TILE } from '../logic/lay
 import { roomAt, hasLineOfSight } from '../logic/awareness.js';
 import { makeRng, hashString } from '../logic/rng.js';
 import { addXp, xpFromEnemy } from '../logic/progression.js';
-import { G, persist } from '../game/state.js';
+import { G, persist, saveSettings, shakeCam } from '../game/state.js';
 import { sfx } from '../game/sfx.js';
 import { music } from '../game/music.js';
 import { Player } from '../game/player.js';
@@ -88,7 +88,7 @@ export class PlayScene extends Phaser.Scene {
       this.title = this.dun.name.toUpperCase();
       this.theme = this.dun.theme;
       seed = d.seed != null ? d.seed : this.dun.kind === 'random' ? (Date.now() & 0x7fffffff) : hashString(d.id);
-      layoutDef = this.dun.kind === 'random' ? generateRandomDef(seed) : this.dun.layout;
+      layoutDef = this.dun.kind === 'random' ? generateRandomDef(seed, { enemyBonus: this.dun.enemyBonus || 0 }) : this.dun.layout;
       this.titleColor = RANK_COLORS[this.dun.rank];
       this.runKey = d.id + ':' + seed;
       this.run = G.runs[this.runKey] || (G.runs[this.runKey] = { killed: new Set(), chests: new Set(), rift: undefined });
@@ -121,7 +121,12 @@ export class PlayScene extends Phaser.Scene {
 
     // ---- player
     let sx = L.spawn.x, sy = L.spawn.y + (d.kind === 'floor' ? 0 : 0);
-    if (d.spawnTile) { sx = d.spawnTile.x; sy = d.spawnTile.y + 2; if (d.kind === 'dungeon') sy = d.spawnTile.y + 1; }
+    let spawnTile = d.spawnTile;
+    if (!spawnTile && d.kind === 'floor' && d.arriveFrom) { // came through stairs: appear beside the stairs that lead back
+      const back = L.objects.find((o) => o.type === 'portal' && o.to && o.to.id === d.arriveFrom);
+      if (back) spawnTile = { x: back.x, y: back.y };
+    }
+    if (spawnTile) { sx = spawnTile.x; sy = spawnTile.y + 2; if (d.kind === 'dungeon') sy = spawnTile.y + 1; }
     this.player = new Player(this, sx * TS + 8, sy * TS + 8);
     this.player.sprite.setCollideWorldBounds(true);
 
@@ -174,6 +179,22 @@ export class PlayScene extends Phaser.Scene {
     const onResize = () => this.applyZoom();
     this.scale.on('resize', onResize);
     window.addEventListener('tower-layout', onResize);
+    // mouse wheel: zoom through whole-number levels (every pixel stays the same size); SHIFT + wheel swaps weapon
+    let wheelAcc = 0, wheelAt = 0;
+    const onWheel = (e) => {
+      if (G.scene !== this || this.sys.isPaused() || !document.body.classList.contains('playing')) return;
+      if (e.target && e.target.closest && e.target.closest('.panel,#menu,#dialog,#title')) return;
+      e.preventDefault();
+      const now = performance.now();
+      if (now - wheelAt < 120) return;
+      wheelAcc += e.deltaY;
+      if (Math.abs(wheelAcc) < 24) return;
+      const dir = wheelAcc > 0 ? -1 : 1; // wheel up = zoom in
+      wheelAcc = 0; wheelAt = now;
+      if (e.shiftKey) { this._wheelSwap = true; return; }
+      this.stepZoom(dir);
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
 
     // minimap + fog of war
     const mapKey = this.mapKey = this.runKey || ('floor:' + this.d0.id);
@@ -184,7 +205,7 @@ export class PlayScene extends Phaser.Scene {
     G.pad && G.pad.reset();
 
     this.events.on('resume', () => { this.input.keyboard.resetKeys(); this.prevFire = false; this.menuLockUntil = performance.now() + 300; this.onLoadoutChanged(); });
-    this.events.once('shutdown', () => { this.scale.off('resize', onResize); window.removeEventListener('tower-layout', onResize); document.body.classList.remove('fighting'); this.tweens.timeScale = 1; this.time.timeScale = 1; clearTimeout(this._hsT); if (this.orbs) this.orbs.destroy(); if (G.scene === this) G.scene = null; });
+    this.events.once('shutdown', () => { this.scale.off('resize', onResize); window.removeEventListener('tower-layout', onResize); window.removeEventListener('wheel', onWheel); document.body.classList.remove('fighting'); this.tweens.timeScale = 1; this.time.timeScale = 1; clearTimeout(this._hsT); if (this.orbs) this.orbs.destroy(); if (G.scene === this) G.scene = null; });
     this.saveTimer = this.time.addEvent({ delay: 15000, loop: true, callback: persist });
     void self;
 
@@ -202,9 +223,9 @@ export class PlayScene extends Phaser.Scene {
       G.ui.toast(`ENTERED: ${kindName.toUpperCase()}  (RANK ${this.dun.rank}, LV ${rr.min}-${rr.max === Infinity ? '+' : rr.max})`, 'info');
       if (this.dun.kind === 'double') G.ui.toast('DOUBLE DUNGEON: difficulty exceeds normal scaling!', 'warn');
       if (this.dun.kind === 'hidden') G.ui.toast('A hidden dungeon. Few have seen this place.', 'info');
-    } else if (this.floor.id === 'floor1' && !G.profile.flags.floor1Seen) {
-      G.profile.flags.floor1Seen = true;
-      G.ui.toast('FLOOR 1. Look for cracks in the walls...', 'info');
+    } else if (this.floor.intro && !G.profile.flags['seen_' + this.floor.id]) {
+      G.profile.flags['seen_' + this.floor.id] = true;
+      G.ui.toast(this.floor.intro, 'info');
     }
     if (this.run && this.run.rift) G.ui.toast('You sense a rift somewhere in this dungeon.', 'info');
     if (G.firstRun && !G.introShown) {
@@ -268,7 +289,7 @@ export class PlayScene extends Phaser.Scene {
           if (!locked && !o.hidden) this.addGlow(c.x, c.y, 0x4f8dff);
           if (o.hidden) this.addGlow(c.x, c.y, 0xffd84a);
           this.addInteract(c.x, c.y, 18,
-            () => (locked ? '[E] LOCKED: CLEAR THE TRIAL OF BONES' : '[E] ENTER ' + o.label),
+            () => (locked ? '[E] LOCKED: ' + (o.lockText || 'CLEAR THE TRIAL OF BONES') : '[E] ' + (o.to.type === 'floor' ? 'TAKE ' : 'ENTER ') + o.label),
             () => this.usePortal(o, c, locked));
           break;
         }
@@ -307,8 +328,17 @@ export class PlayScene extends Phaser.Scene {
         default: break;
       }
     }
-    // cracked walls (hidden dungeon)
-    for (const cr of L.cracks) this.crackHp[cr.x + ',' + cr.y] = 3;
+    // cracked walls (hidden dungeon). Once you have broken one it stays open.
+    for (const cr of L.cracks) {
+      if (this.floor && flags['cracked_' + this.floor.id]) this.layer.putTileAt(TILE.FLOOR_B, cr.x, cr.y);
+      else this.crackHp[cr.x + ',' + cr.y] = 3;
+    }
+  }
+
+  // where the next sealed crack in this floor's walls is (for the objective arrow)
+  crackTarget() {
+    for (const cr of this.layout.cracks || []) if (this.crackHp[cr.x + ',' + cr.y] != null) return this.tileCenter(cr.x, cr.y);
+    return null;
   }
 
   // Names above altars / portals only appear when you are close, so they never clutter the view.
@@ -344,7 +374,7 @@ export class PlayScene extends Phaser.Scene {
         const c = this.tileCenter(x, y);
         const sprite = this.add.image(c.x, c.y + 1, 'o_torch_0').setDepth(1.5);
         this.animated.push({ sprite, prefix: 'o_torch_', n: 2, speed: 5 + (x % 3) });
-        const col = this.theme === 'rift' ? 0xc060ff : this.theme === 'trial' ? 0x9fc8ff : 0xffa040;
+        const col = THEMES[this.theme].torch || 0xffa040;
         this.addGlow(c.x, c.y + 10, col, 1.1);
       }
     }
@@ -373,10 +403,10 @@ export class PlayScene extends Phaser.Scene {
 
   // ============================================================ interaction
   usePortal(o, c, locked) {
-    if (locked) { sfx('deny'); G.ui.toast('The stairs are sealed. Clear the Trial of Bones first.', 'warn'); return; }
+    if (locked) { sfx('deny'); G.ui.toast('The stairs are sealed. ' + (o.lockText ? 'Clear: ' + o.lockText.toLowerCase() + '.' : 'Clear the Trial of Bones first.'), 'warn'); return; }
     sfx('portal');
     if (o.to.type === 'floor') {
-      this.transition({ kind: 'floor', id: o.to.id });
+      this.transition({ kind: 'floor', id: o.to.id, arriveFrom: this.floor.id });
     } else {
       const dun = DUNGEONS[o.to.id];
       G.profile.flags['seen_' + o.to.id] = true;
@@ -389,7 +419,7 @@ export class PlayScene extends Phaser.Scene {
     sfx('portal');
     G.ui.toast('You step into the rift...', 'warn');
     this.transition({
-      kind: 'dungeon', id: 'rift', parentRank: this.dun.rank,
+      kind: 'dungeon', id: RIFT_OF[this.dun.floor] || 'rift', parentRank: this.dun.rank,
       parent: { id: this.d0.id, seed: this.seed, tile: this.run.rift, returnFloor: this.d0.returnFloor, returnTile: this.d0.returnTile },
       returnFloor: this.d0.returnFloor, returnTile: this.d0.returnTile,
     });
@@ -465,14 +495,15 @@ export class PlayScene extends Phaser.Scene {
     sfx('crack');
     const c = this.tileCenter(tx, ty);
     this.spark(c.x, c.y);
-    this.cameras.main.shake(80, 0.004);
+    shakeCam(this, 80, 0.004);
     if (this.crackHp[key] <= 0) {
       delete this.crackHp[key];
       this.layer.putTileAt(TILE.FLOOR_B, tx, ty);
+      if (this.floor) G.profile.flags['cracked_' + this.floor.id] = true;
       G.profile.flags.hiddenOpened = true;
       for (let i = 0; i < 10; i++) this.boneBurst(c.x, c.y);
       sfx('crumble');
-      this.cameras.main.shake(220, 0.006);
+      shakeCam(this, 220, 0.006);
       G.ui.toast('The wall crumbles... a hidden path is revealed!', 'good');
     }
   }
@@ -573,7 +604,10 @@ export class PlayScene extends Phaser.Scene {
     G.ui.toast(`DUNGEON CLEARED!  Bonus +${bonus} XP`, 'good');
     this.gainXp(bonus);
     if (d.id === 'trial') G.ui.toast('The stairs to Floor 1 are now unlocked!', 'good');
-    if (d.id === 'main') G.ui.toast('FLOOR 1 CLEARED! Floors 2-10 are not part of this demo yet.', 'good');
+    if (d.kind === 'main') {
+      const fl = FLOORS[d.floor];
+      G.ui.toast(fl && fl.n === 10 ? 'THE TOWER IS CLEARED! You reached the top of the demo.' : `${fl ? fl.short.toUpperCase() : 'FLOOR'} CLEARED! The stairs up are open.`, 'good');
+    }
     if (d.kind === 'double') G.ui.toast('The rift collapses behind you as you leave.', 'info');
     if (this.exitSprite) this.ringFx(this.exitSprite.x, this.exitSprite.y, 0x4fd37a);
     persist();
@@ -685,7 +719,7 @@ export class PlayScene extends Phaser.Scene {
   // A kill gets the biggest hit-stop and a small pop + shake (a crit kill gets a little more).
   killFx(x, y, crit) {
     this.hitStop(crit ? 110 : 85, true);
-    this.cameras.main.shake(crit ? 120 : 80, crit ? 0.0032 : 0.0022);
+    shakeCam(this, crit ? 120 : 80, crit ? 0.0032 : 0.0022);
     this.ringFx(x, y, 0xe2dcc6, 1);
   }
 
@@ -747,17 +781,20 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  // Camera leads the player a little in the direction of travel and aim (eased so it never whips).
+  // Camera leads the player a touch in the direction of travel and aim. It used to swing up to 36px with the
+  // mouse (felt like the world sliding around); now it is small, dead-zoned and heavily eased. Setting: CAMERA SWAY.
   updateCamera(dt, wp) {
     const cam = this.cameras.main;
     const p = this.player;
     const v = p.sprite.body.velocity;
-    let tx = v.x * 0.15, ty = v.y * 0.15;
+    const sway = G.settings.sway == null ? 0.5 : G.settings.sway;
+    let tx = v.x * 0.07 * sway * 2, ty = v.y * 0.07 * sway * 2;
     let lead = 0;
-    if (this.touch.enabled) lead = this.touch.aiming ? 20 : 0;
-    else if (wp) lead = Math.min(36, Math.hypot(wp.x - p.x, wp.y - p.y) * 0.18);
+    if (this.touch.enabled) lead = this.touch.aiming ? 10 : 0;
+    else if (wp) { const d = Math.hypot(wp.x - p.x, wp.y - p.y); lead = Math.max(0, Math.min(1, (d - 40) / 120)) * 10; }
+    lead *= sway * 2;
     tx += Math.cos(p.aim) * lead; ty += Math.sin(p.aim) * lead;
-    const k = 1 - Math.exp(-4.5 * dt);
+    const k = 1 - Math.exp(-3 * dt);
     this.look.x += (tx - this.look.x) * k;
     this.look.y += (ty - this.look.y) * k;
     const kd = Math.exp(-13 * dt);
@@ -834,7 +871,7 @@ export class PlayScene extends Phaser.Scene {
       skill2: J(k.TWO) || !!pressed.slot1,
       skill3: J(k.THREE) || !!pressed.slot2,
       berserk: J(k.R) || !!pressed.berserk,
-      swap: J(k.Q) || !!pressed.swap,
+      swap: J(k.Q) || !!pressed.swap || !!(this._wheelSwap && !(this._wheelSwap = false)),
       interact: J(k.E) || !!pressed.use,
       menu: J(k.TAB) || J(k.ESC) || !!pressed.menu,
       mute: J(k.N),
@@ -963,7 +1000,8 @@ export class PlayScene extends Phaser.Scene {
       const sx = cv.left + (obj.target.x - cam.worldView.x) * z;
       const sy = cv.top + (obj.target.y - cam.worldView.y) * z;
       const touchLand = this.touch.enabled && cv.width > cv.height;
-      const inset = { l: 34, r: touchLand ? 232 : 34, t: G.settings.minimap ? 150 : 92, b: touchLand ? 80 : 52 };
+      const u = +document.body.dataset.ui || 1;
+      const inset = { l: 34 * u, r: touchLand ? 232 : 34 * u, t: (G.settings.minimap ? 150 : 92) * u, b: touchLand ? 80 : 52 * u };
       const x0 = cv.left + inset.l, x1 = cv.right - inset.r, y0 = cv.top + inset.t, y1 = (this.viewBottom || cv.bottom) - inset.b;
       if (sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1) {
         this.pointer.setVisible(false);
@@ -1007,13 +1045,27 @@ export class PlayScene extends Phaser.Scene {
     G.hud.drawMap(markers, p.x / TS, p.y / TS);
   }
 
-  applyZoom() {
+  // the zoom the game picks on its own (tuned by screen height so a big monitor is not stuck far too close)
+  autoZoom() {
     const w = this.scale.width, h = this.scale.height;
+    if (h > w) return w >= 800 ? 3 : 2;
+    if (this.touch && this.touch.enabled) return w >= 1000 ? 3 : 2;
+    return Math.max(2, Math.min(5, Math.round(h / 270)));
+  }
+
+  stepZoom(dir) {
+    const cur = this.zoomLevel || this.autoZoom();
+    const z = Math.max(2, Math.min(6, cur + dir));
+    if (z === cur) { G.ui.toast(dir > 0 ? 'ZOOM: MAX' : 'ZOOM: MIN', 'info'); return; }
+    G.settings.zoom = String(z);
+    saveSettings();
+    this.applyZoom();
+    G.ui.toast(`ZOOM ${z}X`, 'info');
+  }
+
+  applyZoom() {
     const pref = G.settings.zoom;
-    let z;
-    if (pref && pref !== 'auto') z = +pref;
-    else if (h > w) z = w >= 800 ? 3 : 2;
-    else z = w >= 1600 ? 4 : w >= 1000 ? 3 : 2;
+    const z = pref && pref !== 'auto' ? +pref : this.autoZoom();
     this.zoomLevel = z;
     this.cameras.main.setZoom(z);
     this.hud.layout(z);

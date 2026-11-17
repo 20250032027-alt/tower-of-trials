@@ -2,6 +2,7 @@
 // Keep the texts SHORT: they live in a one-line chip at the top of the screen.
 
 import { G } from './state.js';
+import { DUNGEONS } from '../data/world.js';
 
 const nearest = (list, p) => {
   let best = null, bd = Infinity;
@@ -23,12 +24,16 @@ export function currentObjective(scene) {
     return { text: 'Take the stairs to Floor 1', target: poi['portal:floor1'] };
   }
 
-  if (scene.kind === 'floor') { // floor 1
-    if (!f.cleared_bone_hall && p.level < 5) return { text: 'Warm up in BONE HALL', target: poi['portal:bone_hall'] };
-    if (!f.floor1Cleared) return { text: 'Enter the SKELETON CRYPT', target: poi['portal:main'] };
-    if (!f.hiddenOpened && scene.crackTarget) return { text: 'Look for the cracked wall', target: scene.crackTarget() };
-    if (!f.cleared_hidden_vault && poi['portal:hidden_vault']) return { text: 'Enter the hidden vault', target: poi['portal:hidden_vault'] };
-    return { text: 'Floor 1 done! Try any dungeon', target: null };
+  if (scene.kind === 'floor') { // floors 1-10
+    const fl = scene.floor;
+    const main = DUNGEONS[fl.mainId];
+    if (fl.id === 'floor1' && !f.cleared_bone_hall && p.level < 5) return { text: 'Warm up in BONE HALL', target: poi['portal:bone_hall'] };
+    if (main && !f[fl.id + 'Cleared']) return { text: 'Enter the ' + main.name.toUpperCase(), target: poi['portal:' + fl.mainId] };
+    const next = 'floor' + (fl.n + 1);
+    if (poi['portal:' + next] && !f['seen_' + next]) return { text: `Take the stairs to Floor ${fl.n + 1}`, target: poi['portal:' + next] };
+    if (!f['cracked_' + fl.id] && scene.crackTarget && scene.crackTarget()) return { text: 'Look for the cracked wall', target: scene.crackTarget() };
+    if (fl.hiddenId && !f['cleared_' + fl.hiddenId] && poi['portal:' + fl.hiddenId]) return { text: 'Enter the hidden dungeon', target: poi['portal:' + fl.hiddenId] };
+    return { text: fl.n >= 10 ? 'You reached the top! Try any dungeon' : `Floor ${fl.n} done! Try any dungeon`, target: null };
   }
 
   // inside a dungeon

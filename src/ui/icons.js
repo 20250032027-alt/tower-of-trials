@@ -1,5 +1,6 @@
 // Pixel icons (from the code-drawn catalog) as data URLs for the DOM UI.
 import { buildCatalog } from '../art/catalog.js';
+import { iconPix } from '../art/iconset.js';
 
 let icons = null;
 export function icon(key, scale = 3) {
@@ -69,3 +70,22 @@ export function skillGlyph(kind) {
   if (!glyphCache[ck]) glyphCache[ck] = SKILL_ART[key]().toDataURL();
   return glyphCache[ck];
 }
+
+// ---------------------------------------------------------------- the 16x16 icon set (traits, stats, categories)
+const setCache = {};
+export function setIcon(key, scale = 2) {
+  const k = key + '@' + scale;
+  if (!setCache[k]) { const p = iconPix(key); setCache[k] = p ? p.scaled(scale).toDataURL() : ''; }
+  return setCache[k];
+}
+export const traitIcon = (id, scale = 2) => setIcon(id, scale);
+export const statIcon = (k, scale = 2) => setIcon('s_' + k, scale);
+export const typeIcon = (type, scale = 2) => setIcon('t_' + type.toLowerCase(), scale);
+// short skill names for the small HUD slots (7 letters or fewer)
+export const SHORT = {
+  iron_body: 'IRON', swift_wind: 'WIND', battle_instinct: 'BATTLE', marker: 'MARK', lightweight: 'LIGHT', fast_recovery: 'RECOVER',
+  quick_learner: 'LEARN', mana_reserve: 'MANA', regression: 'REGRESS', glutton: 'GLUTTON', strong_endurance: 'ENDURE',
+  focused_mind: 'FOCUS', iron_will: 'WILL', focus_shot: 'SHOT', mana_surge: 'SURGE', second_wind: 'BREATH', bloodlust: 'BLOOD',
+  keen_senses: 'SENSES', false_predation: 'PREDATE', eagle_eye: 'EAGLE', arcane_affinity: 'ARCANE', lucky_constellation: 'LUCKY',
+  blood_fangs: 'FANGS', fake_mana_heart: 'M.HEART', adaptive_growth: 'ADAPT', precision_aim: 'AIM', weapon_prodigy: 'PRODIGY',
+};

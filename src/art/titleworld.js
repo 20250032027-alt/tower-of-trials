@@ -347,7 +347,7 @@ export function renderSpill(m) {
 }
 
 // ------------------------------------------------------------------ sky and distant ranges
-const SKYC = ['#0c0a1a', '#14102a', '#201838', '#33244f', '#503466', '#7a4a72', '#b4687a', '#e8946e'].map((h) => [...rgb(h), 255]);
+const SKYC = ['#0c0a1a', '#14102a', '#201838', '#33244f', '#503466', '#74344f', '#b04a5e', '#dc6c58'].map((h) => [...rgb(h), 255]);
 const mixc = (a, b, t) => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t)).concat(255);
 
 /** Layer 0 = dusk gradient + moon; layers 1 and 2 = far / near mountain silhouettes on the horizon (transparent above them). */
@@ -376,10 +376,10 @@ export function renderSky(m, layer) {
       const dd = Math.hypot(x - mx, y - my);
       if (dd <= r || dd > r * 2.8) continue;
       const a = (1 - (dd - r) / (r * 1.8)) ** 2 * 0.55;
-      if (a > bay(x, y)) { const c = p.get(x, y); p.set(x, y, mixc(c, [150, 170, 230], 0.34)); }
+      if (a > (bay(x, y) + noise(x, y, 5)) / 2) { const c = p.get(x, y); p.set(x, y, mixc(c, [210, 48, 56], 0.36)); }
     }
-    p.ellipse(mx, my, r, r, (nx, ny) => { const dd = nx * 0.6 - ny * 0.2; return dd > 0.5 ? '#cfc9b4' : dd > 0.05 ? '#e6e0cc' : '#f4f0e0'; });
-    for (const [dx, dy, rr] of [[-0.32, -0.2, 0.2], [0.28, 0.25, 0.26], [-0.1, 0.42, 0.14], [0.38, -0.3, 0.12]]) p.ellipse(mx + dx * r, my + dy * r, Math.max(1, rr * r), Math.max(1, rr * r), '#c7c1ab');
+    p.ellipse(mx, my, r, r, (nx, ny) => { const dd = nx * 0.6 - ny * 0.2; return dd > 0.5 ? '#8c2224' : dd > 0.05 ? '#c2382f' : '#e6603e'; });
+    for (const [dx, dy, rr] of [[-0.32, -0.2, 0.2], [0.28, 0.25, 0.26], [-0.1, 0.42, 0.14], [0.38, -0.3, 0.12]]) p.ellipse(mx + dx * r, my + dy * r, Math.max(1, rr * r), Math.max(1, rr * r), '#7a1c20');
   }
   return p;
 }

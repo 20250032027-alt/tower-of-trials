@@ -9,7 +9,7 @@ export const THEMES = {
     name: 'Trial Hall', style: 'bond',
     floor: '#54473b', floorHi: '#65564a', grout: '#30271f',
     wall: '#a08a6c', wallHi: '#cbb28e', wallLo: '#6c5845', deep: '#120d0a', accent: '#4fd6c4', trim: '#c9a24a',
-    fog: 0x100b08,
+    fog: 0x100b08, torch: 0x9fc8ff,
   },
   // rough round cobbles, bone chips and moss
   crypt: {
@@ -30,9 +30,20 @@ export const THEMES = {
     name: 'Rift', style: 'cobble',
     floor: '#2c2145', floorHi: '#3b2d5c', grout: '#7a2fa8',
     wall: '#55307a', wallHi: '#8a4fc0', wallLo: '#2f1a47', deep: '#0d0716', accent: '#ff4fd0',
-    fog: 0x07040e,
+    fog: 0x07040e, torch: 0xc060ff,
   },
+  // ---- floors 2-10 [PLACEHOLDER palettes] ----------------------------------------------
+  ossuary: { name: 'Ossuary', style: 'cobble', floor: '#5a5446', floorHi: '#6e6757', grout: '#2a261e', wall: '#8f8870', wallHi: '#bbb394', wallLo: '#5a5440', deep: '#11100c', accent: '#d8cfa8', fog: 0x0b0a07, torch: 0xffc060 },
+  cistern: { name: 'Drowned Cistern', style: 'bond', floor: '#3b4b50', floorHi: '#4a5f65', grout: '#1c2a2e', wall: '#5f7f82', wallHi: '#8fb5b2', wallLo: '#35494c', deep: '#0a1214', accent: '#4fd6c4', trim: '#7fe0d0', fog: 0x070f11, torch: 0x6fe0d0 },
+  foundry: { name: 'Rust Foundry', style: 'check', floor: '#4d3a32', floorHi: '#5f483d', grout: '#2a1c17', wall: '#7a4a3a', wallHi: '#b0705a', wallLo: '#47281f', deep: '#140a07', accent: '#ff8a3a', trim: '#d08a4a', fog: 0x0f0806, torch: 0xff8a3a },
+  archive: { name: 'Ashen Archive', style: 'bond', floor: '#4a4644', floorHi: '#5c5754', grout: '#262322', wall: '#78726c', wallHi: '#aaa39a', wallLo: '#47423e', deep: '#100e0d', accent: '#c9a24a', trim: '#c9a24a', fog: 0x0c0a09, torch: 0xffb050 },
+  frost: { name: 'Frostbound Halls', style: 'check', floor: '#4a5a70', floorHi: '#5d7088', grout: '#26303f', wall: '#8aa4c4', wallHi: '#cfe4ff', wallLo: '#566b88', deep: '#0b1018', accent: '#9fe8ff', fog: 0x080c14, torch: 0x9fe8ff },
+  overgrown: { name: 'Overgrown Keep', style: 'cobble', floor: '#3f4a36', floorHi: '#4f5c44', grout: '#1d2418', wall: '#5f7a48', wallHi: '#8fb26a', wallLo: '#344628', deep: '#0b100a', accent: '#c0e060', fog: 0x070b06, torch: 0xc0e060 },
+  ember: { name: 'Ember Citadel', style: 'cobble', floor: '#3a2a2a', floorHi: '#4c3636', grout: '#a03a18', wall: '#5a3a3a', wallHi: '#8a5a4a', wallLo: '#2e1c1c', deep: '#0f0707', accent: '#ff6a2a', fog: 0x0d0505, torch: 0xff6a2a },
+  starlit: { name: 'Starlit Gallery', style: 'check', floor: '#2f3358', floorHi: '#3f4575', grout: '#181b33', wall: '#4f5a9a', wallHi: '#8a96e0', wallLo: '#2c3262', deep: '#080a18', accent: '#ffe27a', trim: '#cfd8ff', fog: 0x05060f, torch: 0xcfd8ff },
+  summit: { name: 'The Summit', style: 'bond', floor: '#6a6a76', floorHi: '#8484a0', grout: '#3a3a48', wall: '#b8b8cc', wallHi: '#f0f0ff', wallLo: '#7a7a92', deep: '#14141c', accent: '#e0b84a', trim: '#e0b84a', fog: 0x0a0a10, torch: 0xffe9a0 },
 };
+
 
 const mix = (a, b, k) => {
   const pa = parseColor(a), pb = parseColor(b);

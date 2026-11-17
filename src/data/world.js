@@ -1,10 +1,9 @@
 // =====================================================================
 //  TOWER FLOORS + DUNGEONS
 //
-//  Sheet: 11 floors (1 Tutorial + 10 main). Only the Tutorial Floor and
-//  Floor 1 are due before December, so those are the playable ones.
-//  Floor layouts/themes are "Pending" in the sheet -> the layouts below are
-//  [PLACEHOLDER] designs of mine.
+//  Sheet: 11 floors (1 Tutorial + 10 main). The sheet only needs the Tutorial Floor and Floor 1
+//  before December, but the whole tower is built here: Floors 2-10 are generated in data/floorgen.js.
+//  Floor layouts/themes are "Pending" in the sheet -> every layout below is a [PLACEHOLDER] design of mine.
 //
 //  Dungeon kinds (sheet):
 //    preset      custom-made dungeons
@@ -21,6 +20,8 @@
 //    extra: role 'start'|'exit', enemies:n, chest:true, pillars:[[dx,dy]..],
 //           objects:[{t:'sign'|'portal'|'dummy'|'altar'|..., dx, dy, ...}]
 // =====================================================================
+
+import { generateTowerFloors } from './floorgen.js';
 
 const R = (id, x, y, w, h, extra = {}) => ({ id, x, y, w, h, ...extra });
 
@@ -91,12 +92,15 @@ export const FLOORS = {
     name: 'Floor 1',
     short: 'Floor 1',
     theme: 'crypt',
+    n: 1, mainId: 'main', hiddenId: 'hidden_vault',
+    intro: 'FLOOR 1. Look for cracks in the walls...',
     layout: {
       w: 72, h: 48, corridor: 2,
       rooms: [
         R('start', 3, 18, 10, 10, {
           role: 'start',
           objects: [
+            { t: 'portal', dx: 7, dy: 4, label: 'STAIRS DOWN', to: { type: 'floor', id: 'tutorial', arriveAtStairs: true } },
             { t: 'sign', dx: 1, dy: 0, title: 'FLOOR 1', text: 'Each floor has 1 main dungeon, 3-6 preset dungeons, a few randomized dungeons, secret hidden dungeons and rare double dungeons.\nEvery dungeon has a Rank. Higher rank = higher-level enemies.' },
           ],
         }),
@@ -112,6 +116,7 @@ export const FLOORS = {
           objects: [
             { t: 'portal', dx: 8, dy: 4, label: 'MAIN DUNGEON: SKELETON CRYPT', to: { type: 'dungeon', id: 'main' } },
             { t: 'sign', dx: 1, dy: 0, title: 'MAIN DUNGEON', text: 'The main dungeon is the main gameplay loop of the floor.\nIt is the longest one, and it ends in the Last Chamber.' },
+            { t: 'portal', dx: 15, dy: 4, label: 'STAIRS TO FLOOR 2', to: { type: 'floor', id: 'floor2' }, requires: 'floor1Cleared', lockText: 'CLEAR THE SKELETON CRYPT' },
           ],
         }),
         R('pA', 40, 4, 14, 9, { objects: [{ t: 'portal', dx: 6, dy: 4, label: 'BONE HALL', to: { type: 'dungeon', id: 'bone_hall' } }] }),
@@ -279,9 +284,19 @@ export const DUNGEONS = {
   },
 };
 
+// ---------------------------------------------------------------- Floors 2-10 [PLACEHOLDER], generated
+const GEN = generateTowerFloors();
+Object.assign(FLOORS, GEN.floors);
+Object.assign(DUNGEONS, GEN.dungeons);
+
+// the double dungeon of each floor (Floor 1 keeps the original one)
+export const RIFT_OF = { floor1: 'rift', ...GEN.riftOf };
+
 // 11 floors listed in the sheet: 1 tutorial + 10 main floors
 export const TOWER = [
   { id: 'tutorial', label: 'Tutorial Floor', playable: true },
-  { id: 'floor1', label: 'Floor 1', playable: true },
-  ...Array.from({ length: 9 }, (_, i) => ({ id: 'floor' + (i + 2), label: 'Floor ' + (i + 2), playable: false })),
+  ...Array.from({ length: 10 }, (_, i) => ({ id: 'floor' + (i + 1), label: 'Floor ' + (i + 1), playable: true })),
 ];
+
+// how many of each kind of dungeon a floor has (used by the TOWER tab and the tests)
+export const dungeonsOf = (floorId) => Object.values(DUNGEONS).filter((d) => d.floor === floorId);

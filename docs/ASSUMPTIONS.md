@@ -11,7 +11,24 @@ Everything else follows the spreadsheet.
 - Spell stats for all four mana types (the Magic tab lists the spells as LOCKED).
 - Blank trait skills (the skill slot shows "?").
 - Secret traits (Regression, Glutton) show as "???" until the plan says more.
-- Floors 2-10 are listed in the Tower tab as "NOT IN DEMO".
+
+## Floors 2-10 (all `[PLACEHOLDER]`, built because the plan only says what a floor *contains*)
+The plan says every floor has: 1 main dungeon, 3-6 preset dungeons, a set number of randomized dungeons, a set number of hidden dungeons and a set number of double dungeons. It does not describe Floors 2-10 at all ("Pending Layout / Pending Theme" is on Floor 1 too). So I built all ten from that structure. Everything below is mine and lives in `src/data/floorgen.js` (layouts are generated from a fixed seed per floor, so a floor is the same every time; swap any of it out later).
+- Names and moods (Ossuary, Drowned Cistern, Rust Foundry, Ashen Archive, Frostbound Halls, Overgrown Keep, Ember Citadel, Starlit Gallery, The Summit) and their 9 tile palettes (`src/art/tiles.js`). Only colour changes between themes.
+- Counts per floor: 1 main, 3-6 presets (4, 3, 4, 5, 4, 5, 6, 4, 6 for Floors 2-10), 2 randomized, 1 hidden (behind a cracked wall) and 1 double dungeon per floor. Floor 1 keeps its original 4 presets / 2 randomized / 1 hidden / 1 double.
+- Dungeon ranks per floor: main E, E, E, D, D, D, D, C, C for Floors 2-10 (Floor 1 is F). Presets use the same rank or one lower, hidden dungeons one higher (capped at C). With the demo level cap of 50 the last floors are tuned for a level-50 hero.
+- Enemy counts grow about 7% per floor. The main dungeon of each floor is bigger (12 rooms, a last chamber with 4 extra enemies and +3 levels).
+- Only the Skeleton Soldier exists in the plan, so every dungeon uses it. Nothing else was invented.
+- Stairs: clearing a floor's main dungeon opens the stairs up (flag `floorNCleared`). Every floor also has stairs down. Floor 10 has no stairs up, just a sign.
+- Travel from the TOWER tab is open for every floor in this demo (marked "TRAVEL (DEMO)" when the floor is not unlocked yet). DEMO tab has UNLOCK ALL STAIRS.
+- Double dungeons: each floor has its own, using the same rule as Floor 1 (enemy level = parent rank max + 5, stats x1.5).
+
+## Controls, camera and UI (all mine, not in the plan)
+- Walk speed raised (base 92 -> 124 px/s) because it felt slow; Skeleton Soldier speed 54 -> 60 to keep fights tense.
+- Camera shake goes through one setting (HELP > SCREEN SHAKE, default 30%). Camera lead toward the mouse is small and dead-zoned (CAMERA SWAY setting), it used to swing up to 36 px.
+- Mouse wheel zooms in whole-number steps; SHIFT + wheel swaps weapon. Skill keys are 1 2 3, shown on the HUD slots and in the LOADOUT tab.
+- Quick setups (Warrior, Ranger, Mage, Tank) in the LOADOUT tab are my own trait combinations of existing traits.
+- The icon set (traits, stats, categories) is drawn in code (`src/art/iconset.js`); trait icons are my own picture choices.
 
 ## Numbers I had to choose (`src/data/constants.js` unless noted)
 - Units: 100% health = 100 HP, 100% stamina = 100, 100 mana per Mana Circle.
