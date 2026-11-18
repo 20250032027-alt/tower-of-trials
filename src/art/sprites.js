@@ -49,6 +49,49 @@ export const manaBolt = () => orb(9, '#ffffff', '#c8d8ff', '#6f8fff');
 export const manaOrb = () => orb(15, '#ffffff', '#d6c4ff', '#8f64f0');
 export const enemyBolt = () => orb(7, '#fff0d0', '#ff9a5a', '#c04020');
 
+// Spells follow the blessing: leaf-spoked sprout, four-point star, blue hex crystal, ringed void. Three sizes each
+// (bolt 9, orb 15, big 21) so a charged shot is a bigger picture, never a scaled-up one.
+const SPELL_PAL = {
+  none: ['#ffffff', '#c8d8ff', '#6f8fff'],
+  natural: ['#f4ffec', '#8fe6a0', '#2f8a4a'],
+  divine: ['#ffffff', '#fff2b0', '#e0b84a'],
+  arcane: ['#ffffff', '#b8dcff', '#3f7fe0'],
+  extraplanar: ['#e9c8ff', '#9a64f0', '#3a1466'],
+};
+export function spell(type, size) {
+  const [core, mid, edge] = SPELL_PAL[type] || SPELL_PAL.none;
+  const p = new Pix(size, size);
+  const h = size / 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x + 0.5 - h, dy = y + 0.5 - h;
+      const nx = dx / h, ny = dy / h;
+      const r = Math.hypot(nx, ny);
+      let d = null; // 0 = centre .. 1 = rim, null = empty
+      if (type === 'natural') {
+        const arm = Math.abs(Math.abs(dx) - Math.abs(dy)) < (size > 12 ? 1.5 : 1.1) && r < 1.0 && r > 0.5; // four leaf spokes on the diagonals
+        if (r < 0.66) d = r / 0.66 * 0.9; else if (arm) d = 0.95;
+      } else if (type === 'divine') {
+        if (Math.pow(Math.abs(nx), 0.62) + Math.pow(Math.abs(ny), 0.62) <= 1) d = (Math.abs(nx) + Math.abs(ny)) * 0.8;
+      } else if (type === 'arcane') {
+        const hex = Math.max(Math.abs(nx) * 0.87 + Math.abs(ny) * 0.5, Math.abs(ny));
+        if (hex <= 1) d = hex;
+      } else if (type === 'extraplanar') {
+        const a = Math.atan2(dy, dx);
+        const gap = r > 0.62 && a > 0.3 && a < 1.1; // a bite out of the ring: it reads as swirling
+        if (r <= 1 && !gap) d = r;
+      } else if (r <= 1) d = r;
+      if (d == null) continue;
+      let c = d < 0.35 ? core : d < 0.7 ? mid : edge;
+      if (type === 'extraplanar') c = r < 0.4 ? '#14061f' : r < 0.62 ? '#5a2aa8' : (nx + ny < 0 ? mid : edge);
+      p.set(x, y, c);
+    }
+  }
+  if (type === 'extraplanar') p.set(Math.floor(h) - 1, Math.floor(h) - 1, '#e9c8ff'); // glint in the dark
+  return p;
+}
+
+
 // ----------------------------------------------------------- effects
 function crescent(size, r0, r1, half, tail) {
   const p = new Pix(size, size);
@@ -89,6 +132,19 @@ export function spark() {
 }
 export const bit = (c) => new Pix(3, 3).fillRect(0, 0, 3, 3, c);
 export const dot = () => new Pix(2, 2).fillRect(0, 0, 2, 2, '#ffffff');
+// a thin speed streak (brightest in the middle), a muzzle flash that points right, and a spent brass casing
+export function streak() {
+  return Pix.fromRows(['.aa#####aa.'], { '#': '#ffffff', a: '#a8a8a8' });
+}
+export function muzzle() {
+  return Pix.fromRows(
+    ['..a......', '.aoa..a..', 'aoo#ooooa', '.aoa..a..', '..a......'],
+    { '#': '#ffffff', o: '#ffd070', a: '#d9742a' },
+  );
+}
+export function casing() {
+  return Pix.fromRows(['yy', 'bb'], { y: '#f0d27a', b: '#b38a2e' });
+}
 
 export function reticle() {
   const p = new Pix(26, 26);

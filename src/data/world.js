@@ -65,7 +65,7 @@ export const FLOORS = {
           objects: [
             { t: 'altar', kind: 'loadout', dx: 3, dy: 4, label: 'LOADOUT' },
             { t: 'altar', kind: 'mana', dx: 10, dy: 4, label: 'MANA ALTAR' },
-            { t: 'sign', dx: 1, dy: 0, title: 'TRAITS AND SKILLS', text: 'Each trait gives passive bonuses AND a skill (keys 1-3).\nTrait rank does not change your Level rank.\nBlank or "???" entries in the plan are shown locked.' },
+            { t: 'sign', dx: 1, dy: 0, title: 'TRAITS AND SKILLS', text: 'You carry ONE trait (a passive), dealt by rank each run.\nSkills are separate: press F to open the skill wheel.\nTrait rank does not change your Level rank.' },
             { t: 'sign', dx: 12, dy: 0, title: 'MAGIC SYSTEM', text: 'Magic and Mana need an Innate Talent: a Magic-type trait.\nAt the Mana Altar your talent may form 1 or 2 Mana Circles.\nNo Mana Circle = no Mana = no Book or Staff.' },
           ],
         }),

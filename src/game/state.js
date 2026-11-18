@@ -1,9 +1,10 @@
 // Shared game state (one object so scenes, menus and the HUD all see the same data).
 import { makeRng } from '../logic/rng.js';
 import { createProfile, loadProfile, saveProfile, clearSave } from '../logic/progression.js';
+import { rollRunTraits } from '../logic/runtraits.js';
 
 const SETTINGS_KEY = 'tower-trials-settings-v1';
-const DEFAULT_SETTINGS = { guide: true, minimap: true, zoom: 'auto', touch: 'auto', autoAim: true, muted: false, musicVol: 0.7, sfxVol: 1, shake: 0.3, sway: 0.5, hudScale: 'auto' };
+const DEFAULT_SETTINGS = { guide: true, minimap: true, zoom: 'auto', touch: 'auto', autoAim: true, lockOn: true, muted: false, musicVol: 0.7, sfxVol: 1, shake: 0.3, sway: 0.5, hudScale: 'auto', traitMode: 'random' };
 function loadSettings() {
   try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch (e) { return { ...DEFAULT_SETTINGS }; }
 }
@@ -35,6 +36,17 @@ export function startFresh() {
   G.profile = createProfile();
   G.runs = {};
   G.firstRun = true;
+  dealTraits();
+}
+
+/** Random-skills mode: hand out a fresh set of 3 traits and one free reroll. Returns false in "pick myself" mode. */
+export function dealTraits(exclude = []) {
+  if (G.settings.traitMode === 'pick') return false;
+  const p = G.profile;
+  p.traits = rollRunTraits(G.rng, undefined, exclude);
+  p.rerolls = 1;
+  p.awakened = false; // a new set of traits has not been through the Mana Altar yet
+  return true;
 }
 
 export function continueSave() {
@@ -42,6 +54,8 @@ export function continueSave() {
   if (!p) return false;
   G.profile = p;
   G.runs = {};
+  p.traits = p.traits.slice(0, 1); // one trait per run now (older saves carried three)
+  if (!p.traits.length) dealTraits(); // an old save with empty slots starts with a dealt set
   return true;
 }
 

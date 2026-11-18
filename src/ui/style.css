@@ -580,3 +580,62 @@ kbd { font: inherit; display: inline-block; min-width: 18px; padding: 0 4px; tex
 .tc { line-height: 16px; }
 .tc .eqb, .card > .btn { line-height: 16px; }
 .menu { height: min(calc(var(--ah, 100vh) * .94), 760px); }
+
+/* ---------- skill wheel (key F / the skill button) ---------- */
+#skillwheel { position: fixed; inset: 0; z-index: 35; display: flex; align-items: center; justify-content: center; gap: 22px; padding: 12px; background: rgba(8,5,12,.58); pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; text-shadow: var(--ol1); }
+@media (orientation: portrait) { #skillwheel { flex-direction: column; gap: 6px; } }
+body:not(.touch) #skillwheel { zoom: var(--ui, 1); }
+.sw-box { position: relative; flex: none; width: 260px; height: 260px; }
+.sw-track { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sw-track circle { fill: none; stroke-width: 5; }
+.sw-track .trk { stroke: rgba(243,234,216,.16); }
+.sw-track .thumb { stroke: #ffe27a; stroke-linecap: butt; }
+.sw-items { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.sw-item { position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: 0; padding: 0; border-radius: 50%; cursor: pointer; font: inherit; color: #f3ead8;
+  background: radial-gradient(circle at 50% 38%, rgba(84,62,42,.85) 0%, rgba(14,10,7,.92) 100%); border: 3px solid rgba(201,162,74,.75); box-shadow: 0 0 0 2px rgba(11,8,6,.6);
+  display: flex; align-items: center; justify-content: center; will-change: transform; }
+.sw-item img { width: 32px; height: 32px; image-rendering: pixelated; display: block; }
+.sw-item em { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 10px; line-height: 12px; text-align: center; text-shadow: var(--ol2); }
+.sw-item.cdon img { opacity: .3; }
+.sw-item.sel { border-color: #ffe27a; box-shadow: 0 0 0 2px rgba(11,8,6,.7), 0 0 14px rgba(255,226,122,.55); }
+.sw-item.actv { border-color: #7fe08a; }
+.sw-use { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 76px; height: 76px; border-radius: 50%; border: 3px solid #ffe27a; cursor: pointer; font: inherit; font-size: 20px; color: #fff2d0; text-shadow: var(--ol2);
+  background: radial-gradient(circle at 50% 38%, rgba(150,112,40,.75), rgba(40,28,10,.9)); box-shadow: 0 0 0 2px rgba(11,8,6,.7); }
+.sw-use:disabled { opacity: .45; border-color: rgba(201,162,74,.5); cursor: default; }
+.sw-use:active:not(:disabled) { transform: translate(-50%,-50%) scale(.94); }
+.sw-info { flex: none; width: 250px; text-align: left; }
+@media (orientation: portrait) { .sw-info { text-align: center; width: min(300px, 92vw); } }
+.sw-name { display: block; font-weight: 400; font-size: 20px; line-height: 24px; color: #ffe27a; text-shadow: var(--ol2); }
+.sw-text { display: block; margin: 4px 0; font-size: 10px; line-height: 14px; color: #f3ead8; }
+.sw-time { display: block; font-style: normal; font-size: 10px; line-height: 14px; color: #b9ad94; }
+.sw-foot { margin-top: 10px; font-size: 10px; line-height: 16px; color: #9f957f; }
+.sw-foot kbd { background: #14101f; border: 2px solid #6b5d46; padding: 0 3px; font: inherit; color: #fff2d0; }
+.sw-foot .ktc { display: none; } body.touch .sw-foot .kpc { display: none; } body.touch .sw-foot .ktc { display: inline; }
+@media (max-height: 360px) { .sw-box { transform: scale(.85); margin: -20px; } }
+
+/* touch: bigger health / stamina / level block (--tz is 1.5 on phones, 2 on tablets, set in controls.js) */
+body.touch .h-tl { zoom: var(--tz, 1.5); }
+body.touch[data-layout="portrait"] .h-tl { width: min(176px, 40vw); }
+body.touch .h-tl .bar { height: 16px; }
+body.touch .h-tl .bar.st, body.touch .h-tl .bar.mp { height: 12px; }
+
+/* ---------- TUNING tab ---------- */
+.tune { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.trow { display: grid; grid-template-columns: minmax(130px, 1.3fr) 2fr 58px auto; gap: 8px; align-items: center; }
+.trow input[type=range] { width: 100%; min-width: 0; }
+.trow b { text-align: right; color: #f3ead8; font-weight: 400; }
+.trow.chg label, .trow.chg b { color: #ffe27a; }
+@media (max-width: 560px) { .trow { grid-template-columns: 1fr 58px; } .trow label { grid-column: 1 / -1; } .trow .btn { grid-column: 1 / -1; } }
+
+/* ---- feel: the skill wheel eases in, the picked skill pops, the skill button flashes, low ammo blinks ---- */
+@keyframes swin { from { opacity: 0; transform: scale(.82) rotate(-14deg); } to { opacity: 1; transform: none; } }
+@keyframes swpop { 0% { transform: scale(.8); } 60% { transform: scale(1.18); } 100% { transform: none; } }
+@keyframes flready { 0% { filter: brightness(2.2); box-shadow: 0 0 0 2px rgba(11,8,6,.5), 0 0 0 12px rgba(255,226,122,.55); } 100% { filter: none; } }
+@keyframes fluse { 0% { transform: scale(1.22); filter: brightness(2.4); } 100% { transform: none; filter: none; } }
+@keyframes lowammo { 50% { opacity: .35; } }
+#skillwheel:not(.hidden) .sw-box { animation: swin .2s ease-out; }
+.sw-item.sel img { animation: swpop .18s ease-out; }
+.skill.fl-ready { animation: flready .6s ease-out; }
+.skill.fl-use { animation: fluse .28s ease-out; }
+.lowammo { color: #ff7a6a; animation: lowammo .45s steps(2) infinite; }
+.reloading { color: #ffe27a; animation: lowammo .6s steps(2) infinite; }

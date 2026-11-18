@@ -3,18 +3,22 @@
 import { LEVEL_MIN, LEVEL_MAX, xpToNext } from '../data/constants.js';
 import { TRAIT_BY_ID } from '../data/traits.js';
 import { WEAPON_LIST } from '../data/weapons.js';
+import { ALL_SKILL_IDS } from '../data/skills.js';
 
 export function createProfile() {
   return {
     level: LEVEL_MIN,
     xp: 0,
-    traits: [], // equipped trait ids
+    traits: [], // the trait (passives) you carry this run: ONE
+    skills: [...ALL_SKILL_IDS], // every skill you own (unlimited); they are used from the skill wheel
+    selSkill: null, // the skill the wheel last had selected
     weapon: 'training_sword',
     ownedWeapons: WEAPON_LIST.map((w) => w.id), // demo: every training weapon
     proficiency: { melee: 0, ranger: 0, magic: 0 },
     manaCircles: 0,
     manaType: null,
     awakened: false, // has the Mana Altar been used for the current talent?
+    rerolls: 1, // free skill rerolls left in this run (random-skills mode)
     extra: {}, // permanent bonus mods (Adaptive Growth)
     flags: {}, // trialCleared, floor1Cleared, hiddenFound ...
     kills: 0,

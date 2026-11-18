@@ -33,13 +33,13 @@ export function buildCatalog() {
     shadow: S.shadow(),
 
     w_sword: F.sword(), w_claymore: F.claymore(), w_spear: F.spear(), w_bow: F.bow(),
-    w_crossbow: F.crossbow(), w_pistol: F.pistol(), w_book: F.book(), w_staff: F.staff(),
+    w_crossbow: F.crossbow(), w_pistol: F.pistol(), w_m4: F.m4(), w_book: F.book(), w_staff: F.staff(),
 
     p_arrow: S.arrow(), p_bolt: S.bolt(), p_bullet: S.bullet(),
     p_mana_bolt: S.manaBolt(), p_mana_orb: S.manaOrb(), p_enemy: S.enemyBolt(),
 
     fx_slash_s: S.slashSmall(), fx_slash_l: S.slashLarge(), fx_thrust: S.thrust(),
-    fx_spark: S.spark(), fx_bone: S.bit('#e2dcc6'), fx_blood: S.bit('#c0584a'), fx_dot: S.dot(),
+    fx_spark: S.spark(), fx_bone: S.bit('#e2dcc6'), fx_blood: S.bit('#c0584a'), fx_dot: S.dot(), fx_streak: S.streak(), fx_muzzle: S.muzzle(), fx_casing: S.casing(),
     fx_alert: S.cueAlert(), fx_wonder: S.cueWonder(),
     fx_reticle: S.reticle(), fx_mark: S.markIcon(), fx_heal: S.healOrb(), fx_glow: S.glow(),
     fx_ring: S.ring(40, '#ffffffcc'), fx_cross: S.cross(), fx_vignette: S.vignette(480, 270),
@@ -51,6 +51,12 @@ export function buildCatalog() {
     o_portal_locked: S.portalFrame(26, 0, BLUE, true),
     o_torch_0: S.torchFrame(0), o_torch_1: S.torchFrame(1),
   };
+  for (const t of F.BLESS_TYPES) { // book, staff and spells follow the blessing
+    for (let f = 0; f < 3; f++) c[`w_book_${t}_${f}`] = F.book(t, f);
+    c['w_staff_' + t] = F.staff(t);
+    c['player_trim_' + t] = F.blessTrim(t); c[`fx_sigil_${t}_0`] = F.sigil(t, 0); c[`fx_sigil_${t}_1`] = F.sigil(t, 1);
+    c[`p_sp_${t}_bolt`] = S.spell(t, 9); c[`p_sp_${t}_orb`] = S.spell(t, 15); c[`p_sp_${t}_big`] = S.spell(t, 21);
+  }
   for (let i = 0; i < 3; i++) c['fx_orb_' + i] = S.xpOrb(i);
   for (let i = 0; i < 16; i++) c['fx_ptr_' + i] = S.pointer(i);
   [9, 11, 13].forEach((r, i) => { c['fx_goal_' + i] = S.pixelRing(r, '#ffe27a', '#120d0a'); });

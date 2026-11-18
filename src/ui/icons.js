@@ -12,7 +12,7 @@ export function icon(key, scale = 3) {
 }
 export const WEAPON_ICON = {
   training_sword: 'w_sword', training_claymore: 'w_claymore', training_spear: 'w_spear', training_bow: 'w_bow',
-  basic_crossbow: 'w_crossbow', one_time_pistol: 'w_pistol', training_mage_book: 'w_book', training_staff: 'w_staff',
+  basic_crossbow: 'w_crossbow', one_time_pistol: 'w_pistol', m4: 'w_m4', training_mage_book: 'w_book', training_staff: 'w_staff',
 };
 
 // ---------------------------------------------------------------- button glyphs (12x12 pixel art, shown at 3-5x)

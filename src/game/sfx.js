@@ -193,9 +193,14 @@ const SHOOT = {
     nz({ ft: 'lowpass', f0: 1800, f1: 400, dur: 0.38, vol: 0.06, delay: 0.03, atk: 0.01, verb: 0.35 });
     click(2100, 0.06, 0.1);
   },
+  m4: () => { // a short dry crack with almost no tail: it fires about 11 times a second
+    nz({ ft: 'highpass', f0: 1200, q: 0.7, dur: 0.035, vol: 0.13, atk: 0.001 });
+    nz({ ft: 'lowpass', f0: 3000, f1: 800, dur: 0.07, vol: 0.09, atk: 0.001 });
+    thump(230, 0.12, 0.07);
+  },
 };
 
-const SHOOT_GAIN = { training_bow: 1.7, basic_crossbow: 1.7, one_time_pistol: 1.4 };
+const SHOOT_GAIN = { training_bow: 1.7, basic_crossbow: 1.7, one_time_pistol: 1.4, m4: 1.1 };
 
 // magic: charge (cast begins) and release (bolt leaves the hand)
 const CHARGE = {
@@ -225,7 +230,7 @@ const CAST = {
 // ------------------------------------------------------------------ hits (weapon kind x material)
 const HITKIND = {
   training_sword: 'blade', training_claymore: 'heavy', training_spear: 'pierce',
-  training_bow: 'arrow', basic_crossbow: 'bolt', one_time_pistol: 'bullet',
+  training_bow: 'arrow', basic_crossbow: 'bolt', one_time_pistol: 'bullet', m4: 'bullet',
   training_mage_book: 'mbolt', training_staff: 'morb',
 };
 // what the target is made of
@@ -340,6 +345,27 @@ const SOUNDS = {
     [440, 660, 880].forEach((f, i) => osc({ type: 'triangle', f0: f, f1: f * 1.02, dur: 0.14, vol: 0.06, delay: i * 0.06, verb: 0.25 }));
     nz({ ft: 'highpass', f0: 6500, dur: 0.15, vol: 0.025, delay: 0.05, atk: 0.04 });
   },
+  // ---- feedback sounds for the skill wheel, skills, M4, enemy varieties, focus and lock-on
+  tick: (o) => { const up = (o.dir || 1) > 0; osc({ type: 'triangle', f0: up ? 780 : 680, f1: up ? 1060 : 540, dur: 0.05, vol: 0.05 }); click(3400, 0.035); },
+  wheelopen: () => { whoosh(260, 1900, 0.24, 0.07, 0.9, 0.1); osc({ type: 'sine', f0: 480, f1: 760, dur: 0.2, vol: 0.04, atk: 0.06, verb: 0.3 }); click(2600, 0.04, 0.02); },
+  wheelclose: () => { whoosh(1700, 240, 0.16, 0.05, 0.9, 0.04); osc({ type: 'sine', f0: 700, f1: 420, dur: 0.12, vol: 0.03 }); },
+  heal: () => { [523, 659, 784, 1047].forEach((f, i) => osc({ type: 'sine', f0: f, dur: 0.24, vol: 0.045, delay: i * 0.05, verb: 0.35 })); whoosh(1200, 5200, 0.3, 0.02, 1, 0.15); },
+  manaup: () => { [660, 990, 1320].forEach((f, i) => osc({ type: 'triangle', f0: f, f1: f * 1.03, dur: 0.2, vol: 0.04, delay: i * 0.045, verb: 0.4 })); nz({ ft: 'highpass', f0: 6000, dur: 0.25, vol: 0.025, delay: 0.04, atk: 0.08 }); },
+  buff: () => { osc({ type: 'sawtooth', f0: 180, f1: 420, dur: 0.22, vol: 0.05, lp: 1400, atk: 0.04 }); ring(880, 0.05, 0.25, 0.06); whoosh(500, 3000, 0.2, 0.04, 1, 0.1); },
+  shieldup: () => { ring(620, 0.09, 0.32); thump(170, 0.12, 0.12); whoosh(400, 2200, 0.18, 0.04, 1, 0.08); },
+  shieldbreak: () => { nz({ ft: 'highpass', f0: 2500, dur: 0.18, vol: 0.1, atk: 0.001 }); ring(900, 0.07, 0.22); osc({ type: 'sawtooth', f0: 400, f1: 90, dur: 0.18, vol: 0.05, lp: 900 }); rattle(4, 0.04, 0.03, 3000); },
+  mark: () => { osc({ type: 'square', f0: 1400, dur: 0.05, vol: 0.035, lp: 3200 }); osc({ type: 'square', f0: 1900, dur: 0.07, vol: 0.035, delay: 0.07, lp: 3200, verb: 0.2 }); click(4000, 0.04, 0.07); },
+  ready: () => { osc({ type: 'sine', f0: 1320, dur: 0.1, vol: 0.03, verb: 0.2 }); osc({ type: 'sine', f0: 1760, dur: 0.16, vol: 0.03, delay: 0.07, verb: 0.3 }); },
+  expire: () => { osc({ type: 'sine', f0: 880, f1: 440, dur: 0.22, vol: 0.03, verb: 0.2 }); whoosh(2400, 500, 0.16, 0.02, 1, 0.05); },
+  dry: () => { click(1500, 0.07); click(900, 0.05, 0.016); thump(500, 0.02, 0.03, 0.01); },
+  magout: () => { click(900, 0.08); thump(260, 0.07, 0.06, 0.02); click(2000, 0.04, 0.06); },
+  lock: () => { osc({ type: 'square', f0: 1500, f1: 1900, dur: 0.03, vol: 0.022, lp: 3500 }); click(3800, 0.03); },
+  lockon: () => { osc({ type: 'triangle', f0: 600, dur: 0.05, vol: 0.05 }); osc({ type: 'triangle', f0: 900, dur: 0.08, vol: 0.05, delay: 0.06, verb: 0.2 }); },
+  lockoff: () => { osc({ type: 'triangle', f0: 900, dur: 0.05, vol: 0.04 }); osc({ type: 'triangle', f0: 560, dur: 0.09, vol: 0.04, delay: 0.06 }); },
+  slam: () => { thump(95, 0.2, 0.2); nz({ ft: 'lowpass', f0: 900, f1: 120, dur: 0.3, vol: 0.12, verb: 0.3 }); rattle(3, 0.04, 0.03, 1200); },
+  magewind: () => { osc({ type: 'sine', f0: 240, f1: 720, dur: 0.5, vol: 0.04, atk: 0.3, verb: 0.4, vib: { rate: 9, depth: 8 } }); nz({ ft: 'highpass', f0: 5000, dur: 0.4, vol: 0.02, atk: 0.2 }); },
+  aurafade: () => { osc({ type: 'sawtooth', f0: 110, f1: 45, dur: 0.4, vol: 0.06, lp: 700 }); nz({ ft: 'lowpass', f0: 1400, f1: 150, dur: 0.4, vol: 0.05, verb: 0.2 }); },
+  overfocus: () => { osc({ type: 'square', f0: 760, f1: 1100, dur: 0.07, vol: 0.03, lp: 2600 }); osc({ type: 'square', f0: 1100, f1: 1500, dur: 0.07, vol: 0.03, delay: 0.07, lp: 2600 }); },
   berserk: () => { // a low growl that distorts, with a heavy thud under it
     osc({ type: 'sawtooth', f0: 90, f1: 50, dur: 0.5, vol: 0.12, dist: true, lp: 900 });
     osc({ type: 'square', f0: 180, f1: 110, dur: 0.35, vol: 0.05, dist: true, lp: 1200 });
@@ -384,6 +410,9 @@ const META = {
   notice: { gap: 200, g: 3.5 }, windup: { gap: 150, g: 4 }, eswing: { g: 3 },
   ui: { gap: 30, soft: true, g: 3.5 }, deny: { gap: 80 }, dodge: { g: 3 }, draw: { g: 2.2 }, charged: { g: 1.8 },
   pickup: { g: 1.3 }, skill: { g: 1.3 }, crack: { g: 1.5 },
+  tick: { gap: 25, soft: true, g: 3 }, wheelopen: { g: 1.6 }, wheelclose: { g: 2.6, gap: 80 }, heal: { g: 1.4 }, manaup: { g: 1.4 }, buff: { g: 1.4 }, shieldup: { g: 1.3 }, shieldbreak: { g: 1.4 },
+  mark: { g: 1.5 }, ready: { g: 1.6, gap: 300 }, expire: { g: 2.6, gap: 200 }, dry: { gap: 120, g: 4.5 }, magout: { g: 1.8 }, lock: { gap: 90, soft: true, g: 3 }, lockon: { g: 1.8 }, lockoff: { g: 1.8 },
+  slam: { gap: 120, g: 1.8 }, magewind: { gap: 200, g: 1.2 }, aurafade: { g: 1.4 }, overfocus: { gap: 250, g: 2 },
 };
 
 // where a sound comes from in the world → volume + stereo position relative to the player

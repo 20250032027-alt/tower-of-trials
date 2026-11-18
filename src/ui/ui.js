@@ -7,15 +7,18 @@ import { unlockAudio, sfx } from '../game/sfx.js';
 import { music } from '../game/music.js';
 import { icon, WEAPON_ICON, setIcon, traitIcon, statIcon, typeIcon } from './icons.js';
 import {
-  GAME_TITLE, RANK_COLORS, RANK_ORDER, RANKS, TRAIT_SLOTS, MANA_CIRCLE_CHANCE, MANA_TYPES, GEMINI_NOTICE,
+  GAME_TITLE, RANK_COLORS, RANK_ORDER, RANKS, TRAIT_SLOTS, MANA_TYPES, GEMINI_NOTICE,
   LEVEL_MAX, LEVEL_MIN, xpToNext, rankOfLevel, UNITS, BERSERK, FOCUS,
 } from '../data/constants.js';
 import { TRAITS, TRAIT_BY_ID, TRAIT_TYPES } from '../data/traits.js';
+import { SKILLS } from '../data/skills.js';
+import { TUNING_GROUPS, T, setTune, resetTune, tuneIsChanged, formatTune, tuneJson } from '../data/tuning.js';
 import { WEAPON_LIST, CLASSES, WEAPONS } from '../data/weapons.js';
 import { TOWER, DUNGEONS, FLOORS, dungeonsOf } from '../data/world.js';
 import { computeStats, traitPassives } from '../logic/stats.js';
 import { setLevel, addXp, innateTalent } from '../logic/progression.js';
 import { rollManaCircles } from '../logic/mana.js';
+import { rollRunTraits } from '../logic/runtraits.js';
 import { loadProfile } from '../logic/progression.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -121,11 +124,11 @@ export function createUI() {
 
   const TABS = [
     ['status', 'STATUS'], ['traits', 'LOADOUT'], ['weapons', 'WEAPONS'],
-    ['magic', 'MAGIC'], ['tower', 'TOWER'], ['help', 'HELP'], ['demo', 'DEMO'],
+    ['magic', 'MAGIC'], ['tower', 'TOWER'], ['help', 'HELP'], ['tuning', 'TUNING'], ['demo', 'DEMO'],
   ];
 
   function render() {
-    const body = { status: rStatus, weapons: rWeapons, traits: rTraits, magic: rMagic, tower: rTower, help: rHelp, demo: rDemo }[tab]();
+    const body = { status: rStatus, weapons: rWeapons, traits: rTraits, magic: rMagic, tower: rTower, help: rHelp, tuning: rTuning, demo: rDemo }[tab]();
     const prev = $menu.querySelector('.content');
     const scroll = prev && renderedTab === tab ? prev.scrollTop : 0;
     renderedTab = tab;
@@ -219,7 +222,7 @@ export function createUI() {
           <img src="${icon(WEAPON_ICON[w.id], 2)}" class="wicon" alt="">
           <div class="ctext"><b>${esc(w.name)}</b><small>${esc(w.type)}</small>
           <div class="kv">${Object.entries(w.sheet).map(([k, v]) => `<span>${esc(k)}: <em>${esc(v)}</em></span>`).join('')}</div>
-          ${w.cls === 'magic' ? `<small>Mana cost ${w.mana}, cast ${w.castTime}s</small>` : w.cls === 'ranger' ? `<small>${w.reload ? 'Reload ' + w.reload + 's, ' : ''}hold to Focus, release to fire</small>` : `<small>Range ${w.range}, ${w.arcDeg} deg arc</small>`}
+          ${w.cls === 'magic' ? `<small>Mana cost ${w.mana}${w.charge ? '+' + w.charge.extraMana : ''}, ${w.charge ? 'hold to charge, release to slam' : 'floats beside you, hold to cast'}</small>` : w.cls === 'ranger' ? `<small>${w.auto ? 'hold to auto-fire' : (w.reload ? 'Reload ' + w.reload + 's, ' : '') + 'hold to Focus, release to fire'}</small>` : `<small>Range ${w.range}, ${w.arcDeg} deg arc</small>`}
           </div>
           <button class="btn small" data-act="equipWeapon" data-id="${w.id}" ${blocked ? 'disabled' : ''}>${eq ? 'EQUIPPED' : blocked ? 'NEEDS MANA' : 'EQUIP'}</button></div>`;
       }).join('')}</div>`;
@@ -227,81 +230,99 @@ export function createUI() {
   }
 
   // ---- LOADOUT (traits + skills + their keybinds in one place)
-  const SLOT_KEYS = ['1', '2', '3'];
-  const PRESETS = [
-    { id: 'warrior', name: 'WARRIOR', desc: 'Tough and bloodthirsty. Melee.', traits: ['iron_body', 'strong_endurance', 'bloodlust'], icon: 't_melee' },
-    { id: 'ranger', name: 'RANGER', desc: 'Fast, sharp-eyed. Bows and guns.', traits: ['focus_shot', 'keen_senses', 'swift_wind'], icon: 't_ranger' },
-    { id: 'mage', name: 'MAGE', desc: 'Mana first. Needs a Mana Circle.', traits: ['mana_reserve', 'mana_surge', 'focused_mind'], icon: 't_magic' },
-    { id: 'tank', name: 'TANK', desc: 'Hard to kill. Takes hits for you.', traits: ['iron_body', 'iron_will', 'second_wind'], icon: 's_defense' },
-  ];
   let traitFilter = 'all';
   const fmtTime = (s) => (s >= 60 ? (Number.isInteger(s / 60) ? s / 60 : (s / 60).toFixed(1)) + 'm' : s + 's');
   const timing = (sk) => (sk.active ? `${fmtTime(sk.active)} ACTIVE` : 'INSTANT') + ` / ${fmtTime(sk.cooldown)} CD`;
 
+  // Magic traits are Innate Talents: their rank stays hidden everywhere (it decides the Mana Circle odds)
+  const hidesRank = (t) => t.type === 'Magic';
+  const rankColor = (t) => (hidesRank(t) ? TRAIT_TYPES.Magic.color : RANK_COLORS[t.rank]);
   function traitFrame(t, size = 3) {
-    const col = RANK_COLORS[t.rank];
-    return `<div class="tf" style="--rc:${col}"><img src="${t.secret ? setIcon('t_secret', size) : traitIcon(t.id, size)}" alt=""><b class="rk">${t.rank}</b></div>`;
+    return `<div class="tf" style="--rc:${rankColor(t)}"><img src="${t.secret ? setIcon('t_secret', size) : traitIcon(t.id, size)}" alt=""><b class="rk">${hidesRank(t) ? '?' : t.rank}</b></div>`;
   }
-  function traitCard(t) {
+  function traitCard(t, readOnly = false) {
     const equipped = G.profile.traits.includes(t.id);
     const type = TRAIT_TYPES[t.type];
     if (t.secret) {
       return `<div class="tc locked">${traitFrame(t)}<div class="tb"><div class="tn"><b>???</b><i style="color:${type.color}">SECRET</i></div>
-        <p><em>PASSIVE</em> ???</p><p><em>SKILL</em> ???</p><p class="tm">Find the way to unlock it.</p></div></div>`;
+        <p><em>PASSIVE</em> ???</p><p class="tm">Find the way to unlock it.</p></div></div>`;
     }
-    const sk = t.skill;
     return `<div class="tc ${equipped ? 'equipped' : ''}">${traitFrame(t)}
       <div class="tb"><div class="tn"><b>${esc(t.name.toUpperCase())}</b><i style="color:${type.color}">${t.type.toUpperCase()}</i></div>
         <p><em>PASSIVE</em> ${esc(t.effects)}</p>
-        ${sk ? `<p><em>SKILL</em> ${esc(sk.text)}</p><p class="tm">${timing(sk)}</p>` : '<p class="dim"><em>SKILL</em> ??? (blank in the plan)</p>'}
       </div>
-      <button class="btn small eqb" data-act="${equipped ? 'unequipTrait' : 'equipTrait'}" data-id="${t.id}">${equipped ? 'REMOVE' : 'EQUIP'}</button></div>`;
+      ${readOnly ? (equipped ? '<b class="eqb dim">YOURS</b>' : '') : `<button class="btn small eqb" data-act="equipTrait" data-id="${t.id}">${equipped ? 'EQUIPPED' : 'EQUIP'}</button>`}</div>`;
   }
-  function slotCard(i) {
-    const t = TRAIT_BY_ID[G.profile.traits[i]];
-    const key = `<b class="key">${SLOT_KEYS[i]}</b>`;
-    if (!t) return `<div class="ls empty">${key}<div class="tf blank"><span>+</span></div><div class="lsb"><b class="dim">EMPTY</b><small>Pick a trait below. Its skill goes on key ${SLOT_KEYS[i]}.</small></div></div>`;
-    const sk = t.skill;
-    return `<div class="ls filled" style="--rc:${RANK_COLORS[t.rank]}">${key}${traitFrame(t, 4)}
+  function skillCard(sd) {
+    const sk = sd.skill, type = TRAIT_TYPES[sd.type];
+    return `<div class="tc"><div class="tf" style="--rc:${type.color}"><img src="${traitIcon(sd.id, 3)}" alt=""></div>
+      <div class="tb"><div class="tn"><b>${esc(sd.name.toUpperCase())}</b><i style="color:${type.color}">${sd.type.toUpperCase()}</i></div>
+        <p>${esc(sk.text)}</p><p class="tm">${timing(sk)}</p></div></div>`;
+  }
+  function slotCard(random = false) {
+    const t = TRAIT_BY_ID[G.profile.traits[0]];
+    if (!t) return `<div class="ls empty"><div class="tf blank"><span>+</span></div><div class="lsb"><b class="dim">NO TRAIT</b><small>${random ? 'Nothing dealt yet.' : 'Pick one in the list below.'}</small></div></div>`;
+    return `<div class="ls filled" style="--rc:${rankColor(t)}">${traitFrame(t, 4)}
       <div class="lsb"><b>${esc(t.name.toUpperCase())}</b>
-        <small>${sk ? esc(sk.text) : '??? (blank in the plan)'}</small>
-        ${sk ? `<small class="tm">${timing(sk)}</small>` : ''}</div>
-      <button class="btn small" data-act="unequipTrait" data-id="${t.id}">REMOVE</button></div>`;
+        <small>${esc(t.effects)}</small>
+        <small class="tm">${hidesRank(t) ? 'INNATE TALENT' : 'RANK ' + t.rank}</small></div>
+      ${random ? '' : `<button class="btn small" data-act="unequipTrait" data-id="${t.id}">REMOVE</button>`}</div>`;
   }
   function rTraits() {
     const p = G.profile;
-    const first = G.firstRun ? '<p class="hint pulse">Pick up to 3 traits to start. Each one gives passive bonuses AND a skill on keys 1, 2, 3.</p>' : '';
-    const presets = PRESETS.map((pr) => {
-      const on = pr.traits.length === p.traits.length && pr.traits.every((x) => p.traits.includes(x));
-      return `<button class="pre ${on ? 'on' : ''}" data-act="preset" data-id="${pr.id}"><img src="${setIcon(pr.icon, 3)}" alt=""><b>${pr.name}</b><small>${esc(pr.desc)}</small></button>`;
-    }).join('') + `<button class="pre clear" data-act="preset" data-id="clear"><img src="${setIcon('s_lock', 3)}" alt=""><b>CLEAR</b><small>Empty all three slots.</small></button>`;
+    const random = G.settings.traitMode !== 'pick';
+    const first = random
+      ? `<p class="hint ${G.firstRun ? 'pulse' : ''}">You carry ONE trait per run: a passive that is always on. It is dealt by rarity (F is common, S is very rare) when you start a new game, fall, or leave a dungeon, and you get one reroll. Skills are separate: you own all of them and pick one from the skill wheel (key F).</p>`
+      : (G.firstRun ? '<p class="hint pulse">Pick ONE trait (a passive that is always on). Skills are separate: you own all of them and pick one from the skill wheel (key F).</p>' : '');
+    const modes = [['random', 'RANDOM EACH RUN'], ['pick', 'PICK MYSELF']]
+      .map(([id, label]) => `<button class="chip ${(random ? 'random' : 'pick') === id ? 'on' : ''}" data-act="traitMode" data-id="${id}">${label}</button>`).join('');
     const filters = [['all', 'ALL'], ...Object.keys(TRAIT_TYPES).filter((k) => k !== 'Secret').map((k) => [k, k.toUpperCase()]), ['Secret', 'SECRET']]
       .map(([id, label]) => `<button class="chip ${traitFilter === id ? 'on' : ''}" data-act="filter" data-id="${id}">${label}</button>`).join('');
     const list = TRAITS.filter((t) => traitFilter === 'all' || t.type === traitFilter || (traitFilter === 'Secret' && t.secret));
+    const card = (t) => traitCard(t, random);
+    // Magic traits are not sorted by rank (their rank is hidden): they get a block of their own
     const byRank = RANK_ORDER.map((r) => {
-      const ts = list.filter((t) => t.rank === r);
+      const ts = list.filter((t) => t.rank === r && !hidesRank(t));
       if (!ts.length) return '';
-      return `<h3 style="color:${RANK_COLORS[r]}">${r} RANK</h3><div class="tgrid">${ts.map(traitCard).join('')}</div>`;
+      return `<h3 style="color:${RANK_COLORS[r]}">${r} RANK</h3><div class="tgrid">${ts.map(card).join('')}</div>`;
     }).join('');
+    const magic = list.filter(hidesRank);
+    const magicBlock = magic.length ? `<h3 style="color:${TRAIT_TYPES.Magic.color}">INNATE TALENTS</h3><div class="tgrid">${magic.map(card).join('')}</div>` : '';
+    const left = p.rerolls || 0;
     return `${first}
-      <h3>SKILL SLOTS</h3>
-      <div class="lslots">${[0, 1, 2].map(slotCard).join('')}</div>
-      <p class="hint">Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> in the game to use a skill (or tap its button). Passives are always on.</p>
-      <h3>QUICK SETUPS</h3>
-      <div class="presets">${presets}</div>
-      <h3>TRAIT LIBRARY</h3>
+      <div class="chips">${modes}</div>
+      <h3>YOUR TRAIT</h3>
+      <div class="lslots">${slotCard(random)}</div>
+      ${random ? `<div class="row"><button class="btn" data-act="reroll" ${left > 0 ? '' : 'disabled'}>REROLL TRAIT (${left} LEFT)</button></div>` : ''}
+      <h3>SKILLS (${SKILLS.length})</h3>
+      <p class="hint">Press <kbd>F</kbd> in the game (or tap the skill button) to open the skill wheel. Scroll round it, then use the one at the top. The game slows down while it is open. For now the skills are the ones that come with the traits of the plan, under the trait's name. There is no limit on how many you can have.</p>
+      <div class="tgrid">${SKILLS.map(skillCard).join('')}</div>
+      <h3>${random ? 'TRAIT CODEX' : 'TRAIT LIBRARY'}</h3>
+      ${random ? '<p class="hint">Every trait you can be dealt. Magic traits are Innate Talents: their rank is a secret.</p>' : ''}
       <div class="chips">${filters}</div>
-      ${byRank}
+      ${byRank}${magicBlock}
       <h3>SWORD AURA <kbd>R</kbd></h3>
       <p class="hint">Physical Force is split into ${BERSERK.maxCores} Aura Cores (25% each). Each Berserk activation burns one Core, then Force drains ${pct(BERSERK.drainPerSecond, 1)} per second. Empty = <b>Life Force Decay</b> (damage taken, move speed -70%, damage -50%, crit rate -25%). Ending early = <b>Life Force Exhaustion</b>. A Core regenerates after ${BERSERK.coreRegenSeconds}s without activating. Berserker's Fury/Wrath skills trigger the stronger Berserk Mode.</p>`;
+  }
+
+  // ---- TUNING: live numbers, saved in this browser
+  function rTuning() {
+    const groups = TUNING_GROUPS.map((g) => `<h3>${g.name}</h3><p class="hint">${esc(g.note)}</p>
+      <div class="tune">${g.items.map((i) => {
+        const v = T(i.key);
+        return `<div class="trow ${tuneIsChanged(i.key) ? 'chg' : ''}"><label>${esc(i.label)}</label>
+          <input type="range" data-tune="${i.key}" min="${i.min}" max="${i.max}" step="${i.step}" value="${v}"><b data-tv="${i.key}">${formatTune(i, v)}</b>
+          <button class="btn small" data-act="tuneReset" data-id="${i.key}" title="Back to the default">RESET</button></div>`;
+      }).join('')}</div>`).join('');
+    return `<p class="hint">Change the numbers and play on: they apply at once and are saved in this browser. Lock-on, HUD size and the rest are on the HELP tab.</p>
+      <div class="row"><button class="btn small" data-act="tuneCopy">COPY ALL (JSON)</button><button class="btn small danger" data-act="tuneResetAll">RESET ALL</button></div>
+      ${groups}`;
   }
 
   // ---- MAGIC
   function rMagic() {
     const p = G.profile;
     const talent = innateTalent(p);
-    const ch = talent ? MANA_CIRCLE_CHANCE[talent.rank] : null;
-    const table = RANK_ORDER.map((r) => `<tr class="${talent && talent.rank === r ? 'hl' : ''}"><td style="color:${RANK_COLORS[r]}">${r}</td><td>${MANA_CIRCLE_CHANCE[r].talent}</td><td>${pct(MANA_CIRCLE_CHANCE[r].one)}</td><td>${pct(MANA_CIRCLE_CHANCE[r].two)}</td></tr>`).join('');
     const types = Object.entries(MANA_TYPES).map(([id, m]) => `
       <div class="card ${p.manaType === id ? 'equipped' : ''}">
         <div class="ctext"><b style="color:${m.color}">${m.name}</b><small>${esc(m.desc)}</small>
@@ -310,7 +331,7 @@ export function createUI() {
     const spells = p.manaType ? MANA_TYPES[p.manaType].magic.map((m) => `<div class="spell">${m.toUpperCase()} <em>LOCKED - spell stats are blank in the plan</em></div>`).join('') : '<div class="dim">Choose a mana type to see its magic.</div>';
     return `
       <p class="hint">Magic and Mana cannot be acquired by any means without the proper affinity and talent. Only select <b>Innate Talents</b> (Magic-type traits) can manifest Mana Circles in their hearts. Mana is the essence given by a Constellation.</p>
-      <div class="hero"><div class="big">MANA CIRCLES: ${p.manaCircles}</div><small>${talent ? `Innate Talent: <b style="color:${RANK_COLORS[talent.rank]}">${esc(talent.name)}</b> (${talent.rank}) &nbsp; 1 circle ${pct(ch.one)}, 2 circles ${pct(ch.two)}` : 'No Innate Talent equipped. Equip a Magic trait first (Traits tab).'}</small></div>
+      <div class="hero"><div class="big">MANA CIRCLES: ${p.manaCircles}</div><small>${talent ? `Innate Talent: <b style="color:${TRAIT_TYPES.Magic.color}">${esc(talent.name)}</b>` : 'No Innate Talent in your skills. Get a Magic trait first (LOADOUT tab).'}</small></div>
       <div class="row">
         <button class="btn" data-act="awaken" ${talent ? '' : 'disabled'}>AWAKEN MANA CIRCLES</button>
         <button class="btn ghost" data-act="resetCircles" ${p.manaCircles ? '' : 'disabled'}>RESET (DEMO)</button>
@@ -318,9 +339,7 @@ export function createUI() {
       <small class="hint">Demo: you can re-roll as many times as you like. Mana = ${UNITS.manaPerCircle} per circle at level 1 [placeholder value].</small>
       <h3>TYPES OF MANA</h3><div class="cards">${types}</div>
       <h3>MAGIC OF YOUR MANA</h3><div class="spells">${spells}</div>
-      <p class="hint">Book (quick and fast) and Staff (more damage, slower casting) fire a basic mana bolt in the colour of your mana type.</p>
-      <h3>INNATE TALENT CHANCES</h3>
-      <table class="stats"><thead><tr><th>RANK</th><th>TALENT</th><th>1 CIRCLE</th><th>2 CIRCLES</th></tr></thead>${table}</table>`;
+      <p class="hint">The Book (quick, floats beside you) and the Staff (hold to charge, then slam) cast in the look of your mana type.</p>`;
   }
 
   // ---- TOWER
@@ -365,7 +384,7 @@ export function createUI() {
       <div class="keytable">
         ${kt(['W', 'A', 'S', 'D'], 'Move (arrow keys work too)')}${kt(['MOUSE'], 'Aim')}
         ${kt(['CLICK'], 'Attack. Hold to Focus / Cast')}${kt(['SPACE'], 'Dodge roll')}
-        ${kt(['1', '2', '3'], 'Skill slots (LOADOUT tab)')}
+        ${kt(['F'], 'Skill wheel: scroll with the mouse wheel or Q / E, F or ENTER to use')}${kt(['T'], 'Lock-on on / off')}
         ${kt(['R'], 'Sword Aura (Berserk)')}${kt(['Q'], 'Swap weapon')}${kt(['SHIFT', 'WHEEL'], 'Swap weapon')}
         ${kt(['WHEEL'], 'Zoom in / out')}${kt(['E'], 'Use / open / read')}
         ${kt(['M'], 'Full map')}${kt(['TAB'], 'Menu (ESC too)')}${kt(['N'], 'Sound on / off')}
@@ -392,6 +411,7 @@ export function createUI() {
         <button class="btn small" data-act="setOpt" data-k="guide">GOAL ARROW: <b>${on(S.guide)}</b></button>
         <button class="btn small" data-act="setOpt" data-k="minimap">MINIMAP: <b>${on(S.minimap)}</b></button>
         <button class="btn small" data-act="setOpt" data-k="autoAim">AUTO-AIM (TOUCH): <b>${on(S.autoAim)}</b></button>
+        <button class="btn small" data-act="setOpt" data-k="lockOn">LOCK-ON <i>(T)</i>: <b>${on(S.lockOn !== false)}</b></button>
       </div>
       <div class="row">
         <button class="btn small" data-act="setOpt" data-k="zoom">ZOOM: <b>${S.zoom === 'auto' ? 'AUTO' : S.zoom + 'X'}</b> <i>(mouse wheel)</i></button>
@@ -444,11 +464,24 @@ export function createUI() {
     equipTrait(el) {
       const id = el.dataset.id;
       const p = G.profile;
-      if (p.traits.length >= TRAIT_SLOTS) { toast(`All ${TRAIT_SLOTS} trait slots are full. Remove one first.`, 'warn'); sfx('deny'); return; }
-      p.traits.push(id);
+      p.traits = [id]; // one trait: the new one replaces the old
       p.awakened = false;
       G.firstRun = false;
       sfx('ui'); afterChange();
+    },
+    reroll() {
+      const p = G.profile;
+      if ((p.rerolls || 0) <= 0) { sfx('deny'); return; }
+      p.traits = rollRunTraits(G.rng, undefined, p.traits); // all new ones
+      p.rerolls -= 1; p.awakened = false; G.firstRun = false;
+      sfx('levelup'); toast('NEW TRAIT: ' + p.traits.map((id) => TRAIT_BY_ID[id].name.toUpperCase()).join(', '), 'info');
+      afterChange();
+    },
+    traitMode(el) {
+      G.settings.traitMode = el.dataset.id === 'pick' ? 'pick' : 'random';
+      saveSettings(); sfx('ui');
+      toast(G.settings.traitMode === 'pick' ? 'You choose your trait.' : 'A trait is dealt again from your next run.', 'info');
+      render();
     },
     unequipTrait(el) {
       const p = G.profile;
@@ -457,18 +490,13 @@ export function createUI() {
     },
     towerSel(el) { towerFloor = el.dataset.id; sfx('ui'); render(); },
     filter(el) { traitFilter = el.dataset.id; sfx('ui'); render(); },
-    preset(el) {
-      const p = G.profile;
-      if (el.dataset.id === 'clear') p.traits = [];
-      else {
-        const pr = PRESETS.find((x) => x.id === el.dataset.id);
-        if (!pr) return;
-        p.traits = [...pr.traits];
-        if (pr.id === 'ranger' && WEAPONS[p.weapon] && WEAPONS[p.weapon].cls === 'melee') toast('Ranger setup works best with a bow or gun (WEAPONS tab).', 'tip');
-        if (pr.id === 'mage' && p.manaCircles <= 0) toast('Mage setup needs a Mana Circle (MAGIC tab).', 'tip');
-      }
-      p.awakened = false; G.firstRun = false;
-      sfx('ui'); afterChange();
+    tuneReset(el) { resetTune(el.dataset.id); sfx('ui'); render(); },
+    tuneResetAll() { resetTune(); sfx('ui'); toast('Tuning back to the defaults.', 'info'); render(); },
+    tuneCopy() {
+      const txt = tuneJson();
+      const done = () => toast('Tuning copied.', 'good');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => dialog('TUNING', txt));
+      else dialog('TUNING', txt);
     },
     equipWeapon(el) {
       G.profile.weapon = el.dataset.id; sfx('ui'); afterChange();
@@ -522,6 +550,14 @@ export function createUI() {
     if (fn) fn(el);
   });
   root.addEventListener('input', (e) => {
+    if (e.target.dataset && e.target.dataset.tune) { // live tuning slider
+      const key = e.target.dataset.tune, it = TUNING_GROUPS.flatMap((g) => g.items).find((i) => i.key === key);
+      setTune(key, +e.target.value);
+      const lab = root.querySelector(`[data-tv="${key}"]`);
+      if (lab && it) lab.textContent = formatTune(it, T(key));
+      e.target.closest('.trow').classList.toggle('chg', tuneIsChanged(key));
+      return;
+    }
     if (e.target.id === 'lvl') root.querySelector('#lvlv').textContent = e.target.value;
     if (e.target.id === 'shakeAmt') { G.settings.shake = +e.target.value / 100; root.querySelector('#shakeAmtv').textContent = e.target.value; }
     if (e.target.id === 'musicVol' || e.target.id === 'sfxVol') {
@@ -592,7 +628,7 @@ export function createUI() {
             </div>
             <div class="tt-tip"><p><b>TIP</b><span id="tt-tip">${esc(TIPS[tipIdx0])}</span></p></div>
             <div class="tt-keys">
-              <span class="kpc"><span class="kk"><kbd>WASD</kbd>MOVE</span><span class="kk"><kbd>CLICK</kbd>ATTACK</span><span class="kk"><kbd>SPACE</kbd>DODGE</span><span class="kk"><kbd>1-3</kbd>SKILLS</span><span class="kk"><kbd>E</kbd>USE</span><span class="kk"><kbd>TAB</kbd>MENU</span></span>
+              <span class="kpc"><span class="kk"><kbd>WASD</kbd>MOVE</span><span class="kk"><kbd>CLICK</kbd>ATTACK</span><span class="kk"><kbd>SPACE</kbd>DODGE</span><span class="kk"><kbd>F</kbd>SKILLS</span><span class="kk"><kbd>E</kbd>USE</span><span class="kk"><kbd>TAB</kbd>MENU</span></span>
               <span class="ktc"><span class="kk"><kbd>LEFT</kbd>MOVE</span><span class="kk"><kbd>RIGHT</kbd>ATTACK + DODGE</span></span>
             </div>
           </div>

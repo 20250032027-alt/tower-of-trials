@@ -3,6 +3,7 @@
 // Each pickup plays one note of a rising chain, pulses the XP bar and adds its share of the XP.
 import { G } from './state.js';
 import { sfx } from './sfx.js';
+import { T } from '../data/tuning.js';
 import { splitXp, orbCountFor } from '../logic/orbs.js';
 import { chainStep } from '../logic/sfxmath.js';
 
@@ -98,7 +99,7 @@ export class XpOrbs {
     this.chain = { step, t: now };
     sfx('xp', { step });
     sc.gainXp(o.v);
-    G.hud.pulseXp && G.hud.pulseXp(Math.round(o.v * sc.player.stats.expRate), step);
+    G.hud.pulseXp && G.hud.pulseXp(Math.round(o.v * sc.player.stats.expRate * T('xpRate')), step);
     // tiny pop where it lands on you
     for (let i = 0; i < 3; i++) {
       const a = (i / 3) * Math.PI * 2 + rnd(0, 1);

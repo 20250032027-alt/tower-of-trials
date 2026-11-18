@@ -3,15 +3,17 @@
 
 import Phaser from 'phaser';
 import { FLOORS, DUNGEONS, RIFT_OF } from '../data/world.js';
-import { ENEMIES } from '../data/enemies.js';
+import { ENEMIES, pickEnemyType } from '../data/enemies.js';
 import { rankRange, RANK_COLORS, DOUBLE_DUNGEON_CHANCE, rankOfLevel } from '../data/constants.js';
 import { THEMES } from '../art/tiles.js';
 import { buildLayout, generateRandomDef, pickRiftSpot, TILE } from '../logic/layout.js';
 import { roomAt, hasLineOfSight } from '../logic/awareness.js';
 import { makeRng, hashString } from '../logic/rng.js';
 import { addXp, xpFromEnemy } from '../logic/progression.js';
-import { G, persist, saveSettings, shakeCam } from '../game/state.js';
+import { G, persist, saveSettings, shakeCam, dealTraits } from '../game/state.js';
+import { TRAIT_BY_ID } from '../data/traits.js';
 import { sfx } from '../game/sfx.js';
+import { T } from '../data/tuning.js';
 import { music } from '../game/music.js';
 import { Player } from '../game/player.js';
 import { Skeleton, Dummy } from '../game/enemy.js';
@@ -38,7 +40,7 @@ const angDiff = (a, b) => Math.abs(Phaser.Math.Angle.Wrap(a - b));
 
 const WEAPON_KEYS = {
   training_sword: 'w_sword', training_claymore: 'w_claymore', training_spear: 'w_spear',
-  training_bow: 'w_bow', basic_crossbow: 'w_crossbow', one_time_pistol: 'w_pistol',
+  training_bow: 'w_bow', basic_crossbow: 'w_crossbow', one_time_pistol: 'w_pistol', m4: 'w_m4',
   training_mage_book: 'w_book', training_staff: 'w_staff',
 };
 
@@ -54,7 +56,7 @@ export class PlayScene extends Phaser.Scene {
     G.scene = this;
     const d = this.d0;
     this.kind = d.kind;
-    this.animated = [];
+    this.animated = []; this.torchList = [];
     this.interactables = [];
     this.poi = {}; // points of interest (for the objective arrow / minimap)
     this.enemyList = [];
@@ -118,6 +120,7 @@ export class PlayScene extends Phaser.Scene {
     this.enemyGroup = this.physics.add.group();
     this.dummyGroup = this.physics.add.group({ immovable: true });
     this.projectiles = this.physics.add.group();
+    this.enemyShots = this.physics.add.group(); // arrows and orbs from archers and mages
 
     // ---- player
     let sx = L.spawn.x, sy = L.spawn.y + (d.kind === 'floor' ? 0 : 0);
@@ -143,10 +146,18 @@ export class PlayScene extends Phaser.Scene {
     this.physics.add.collider(this.projectiles, this.layer, (proj, tile) => {
       if (tile && tile.index === TILE.CRACK) this.hitCrackTile(tile.x, tile.y);
       this.spark(proj.x, proj.y);
+      this.player.projectileBurst(proj);
       proj.destroy();
     });
     this.physics.add.overlap(this.projectiles, this.enemyGroup, (proj, es) => this.player.projectileHit(proj, es.ref));
     this.physics.add.overlap(this.projectiles, this.dummyGroup, (proj, ds) => this.player.projectileHit(proj, ds.ref));
+    this.physics.add.collider(this.enemyShots, this.layer, (proj) => { this.enemyShotImpact(proj); proj.destroy(); });
+    this.physics.add.overlap(this.player.sprite, this.enemyShots, (a, b) => {
+      const proj = a === this.player.sprite ? b : a; // Phaser hands over the lone sprite first, whatever the order given
+      if (!proj.active || proj.passed) return;
+      if (this.player.takeHit(proj.dmg, proj.crit, proj)) { this.enemyShotImpact(proj); proj.destroy(); } // a roll goes straight through it
+      else proj.passed = true;
+    });
 
     // ---- camera
     const cam = this.cameras.main;
@@ -164,7 +175,7 @@ export class PlayScene extends Phaser.Scene {
     this.touch = { get enabled() { return !!(G.pad && G.pad.active); }, get aiming() { return !!(G.pad && G.pad.aiming); } };
     this.focusGfx = this.add.graphics().setDepth(45);
     this.reticles = [];
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,E,Q,R,ONE,TWO,THREE,TAB,ESC,M,N');
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,ENTER,E,Q,R,T,F,TAB,ESC,M,N');
     this.input.keyboard.addCapture('SPACE,TAB,UP,DOWN,LEFT,RIGHT');
     this.input.mouse.disableContextMenu();
     this.lastAim = 0;
@@ -180,11 +191,16 @@ export class PlayScene extends Phaser.Scene {
     this.scale.on('resize', onResize);
     window.addEventListener('tower-layout', onResize);
     // mouse wheel: zoom through whole-number levels (every pixel stays the same size); SHIFT + wheel swaps weapon
-    let wheelAcc = 0, wheelAt = 0;
+    let wheelAcc = 0, wheelAt = 0, wheelAcc2 = 0;
     const onWheel = (e) => {
       if (G.scene !== this || this.sys.isPaused() || !document.body.classList.contains('playing')) return;
       if (e.target && e.target.closest && e.target.closest('.panel,#menu,#dialog,#title')) return;
       e.preventDefault();
+      if (G.hud && G.hud.wheel.isOpen) { // the skill wheel scrolls
+        wheelAcc2 += e.deltaY;
+        if (Math.abs(wheelAcc2) >= 30) { G.hud.wheel.step(wheelAcc2 > 0 ? 1 : -1); wheelAcc2 = 0; }
+        return;
+      }
       const now = performance.now();
       if (now - wheelAt < 120) return;
       wheelAcc += e.deltaY;
@@ -205,7 +221,7 @@ export class PlayScene extends Phaser.Scene {
     G.pad && G.pad.reset();
 
     this.events.on('resume', () => { this.input.keyboard.resetKeys(); this.prevFire = false; this.menuLockUntil = performance.now() + 300; this.onLoadoutChanged(); });
-    this.events.once('shutdown', () => { this.scale.off('resize', onResize); window.removeEventListener('tower-layout', onResize); window.removeEventListener('wheel', onWheel); document.body.classList.remove('fighting'); this.tweens.timeScale = 1; this.time.timeScale = 1; clearTimeout(this._hsT); if (this.orbs) this.orbs.destroy(); if (G.scene === this) G.scene = null; });
+    this.events.once('shutdown', () => { this.scale.off('resize', onResize); window.removeEventListener('tower-layout', onResize); window.removeEventListener('wheel', onWheel); if (G.hud) G.hud.wheel.close(); document.body.classList.remove('fighting'); this.tweens.timeScale = 1; this.time.timeScale = 1; clearTimeout(this._hsT); if (this.orbs) this.orbs.destroy(); if (G.scene === this) G.scene = null; });
     this.saveTimer = this.time.addEvent({ delay: 15000, loop: true, callback: persist });
     void self;
 
@@ -375,6 +391,7 @@ export class PlayScene extends Phaser.Scene {
         const sprite = this.add.image(c.x, c.y + 1, 'o_torch_0').setDepth(1.5);
         this.animated.push({ sprite, prefix: 'o_torch_', n: 2, speed: 5 + (x % 3) });
         const col = THEMES[this.theme].torch || 0xffa040;
+        (this.torchList = this.torchList || []).push({ x: c.x, y: c.y - 2, col });
         this.addGlow(c.x, c.y + 10, col, 1.1);
       }
     }
@@ -392,7 +409,8 @@ export class PlayScene extends Phaser.Scene {
       if (this.dun.kind === 'double') level = rankRange(this.d0.parentRank || 'F').max + 5 + rng.int(0, 1);
       else level = Phaser.Math.Clamp(G.profile.level + this.dun.levelDelta + (spec.levelBonus || 0) + rng.int(-1, 1), rr.min, rr.max);
       const c = this.tileCenter(spec.x, spec.y);
-      const e = new Skeleton(this, c.x, c.y, level, mult, i, spec.room);
+      const kind = pickEnemyType(this.dun.floor, rng.next()); // which variety stands here depends on the floor
+      const e = new Skeleton(this, c.x, c.y, level, mult, i, spec.room, kind);
       this.enemyGroup.add(e.sprite);
       e.sprite.body.setCircle(6, 4, 4);
       this.enemyList.push(e);
@@ -435,12 +453,19 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     delete G.runs[this.runKey];
+    this.newRunSkills(); // the dungeon was the run: the next one gets new skills
     this.transition({ kind: 'floor', id: d.returnFloor || this.dun.floor, spawnTile: d.returnTile });
+  }
+
+  newRunSkills() {
+    if (!dealTraits()) return;
+    G.ui.toast('NEW SKILLS: ' + G.profile.traits.map((id) => TRAIT_BY_ID[id].name.toUpperCase()).join(', '), 'info');
   }
 
   transition(next) {
     if (this.ending) return;
     this.ending = true;
+    this.closeWheel();
     this.orbs.flush(); // anything still lying around is yours
     persist();
     this.cameras.main.fadeOut(260, 5, 3, 12);
@@ -558,7 +583,7 @@ export class PlayScene extends Phaser.Scene {
 
   gainXp(amount) {
     const p = G.profile;
-    const res = addXp(p, amount, this.player.stats.expRate, G.rng);
+    const res = addXp(p, amount, this.player.stats.expRate * T('xpRate'), G.rng);
     if (res.levelsGained > 0) {
       this.player.refreshStats();
       const st = this.player.stats;
@@ -622,6 +647,7 @@ export class PlayScene extends Phaser.Scene {
     this.cameras.main.fadeOut(900, 40, 0, 0);
     this.time.delayedCall(1200, () => {
       const d = this.d0;
+      this.newRunSkills();
       const floorId = d.kind === 'floor' ? d.id : (d.returnFloor || this.dun.floor);
       if (this.runKey) delete G.runs[this.runKey];
       this.scene.start('Play', { kind: 'floor', id: floorId, afterDeath: true, spawnTile: d.kind === 'floor' ? undefined : d.returnTile });
@@ -713,6 +739,11 @@ export class PlayScene extends Phaser.Scene {
       const c = this.add.image(Math.round(x), Math.round(y), 'fx_dot').setDepth(14).setTint(crit ? (i % 2 ? 0xffd84a : 0xffffff) : 0xfff2d0);
       this.tweens.add({ targets: c, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, alpha: 0, duration: 140 + Math.random() * 90, ease: 'Cubic.easeOut', onComplete: () => c.destroy() });
     }
+    // a streak thrown out along the blow and a puff of bone dust off the target
+    const st = this.add.image(Math.round(x + Math.cos(angle) * 4), Math.round(y + Math.sin(angle) * 4), 'fx_streak').setDepth(14).setRotation(angle).setTint(crit ? 0xffd84a : 0xffffff);
+    this.tweens.add({ targets: st, x: Math.round(st.x + Math.cos(angle) * 8), y: Math.round(st.y + Math.sin(angle) * 8), alpha: 0, duration: 110, onComplete: () => st.destroy() });
+    const pf = this.add.image(Math.round(x), Math.round(y), 'fx_puff').setDepth(9.5).setAlpha(0.45).setTint(0xe2dcc6);
+    this.tweens.add({ targets: pf, x: Math.round(x + Math.cos(angle) * 5), y: Math.round(y + Math.sin(angle) * 5 - 2), alpha: 0, duration: 240, onComplete: () => pf.destroy() });
     if (crit) this.ringFx(x, y, 0xffd84a, 1);
   }
 
@@ -751,9 +782,190 @@ export class PlayScene extends Phaser.Scene {
     this.slowK = 1; this.slowUntil = 0;
   }
 
-  stepDust(x, y) {
-    const d = this.add.image(Math.round(x + (Math.random() - 0.5) * 4), Math.round(y + 6), 'fx_dot').setDepth(5).setAlpha(0.45).setTint(0xcfc8b0);
-    this.tweens.add({ targets: d, y: d.y - 3, alpha: 0, duration: 260, onComplete: () => d.destroy() });
+  // a small puff kicked up behind a foot: it hangs back against the direction of travel (side = -1 / 1 for the left / right foot)
+  stepDust(x, y, vx = 0, vy = 0, side = 0) {
+    const l = Math.hypot(vx, vy) || 1, ux = vx / l, uy = vy / l;
+    const px = x - ux * 3 - uy * side * 2.5, py = y + 6 - uy * 2 + ux * side * 1.5;
+    const d = this.add.image(Math.round(px), Math.round(py), 'fx_dot').setDepth(5).setAlpha(0.5).setTint(0xcfc8b0);
+    this.tweens.add({ targets: d, x: Math.round(d.x - ux * 4), y: Math.round(d.y - 3 - uy * 2), alpha: 0, duration: 280, onComplete: () => d.destroy() });
+  }
+
+  // pushing off from a standstill: two puffs behind the feet
+  startDust(x, y, ux, uy) {
+    for (let i = 0; i < 2; i++) {
+      const d = this.add.image(Math.round(x - ux * (3 + i * 3)), Math.round(y + 6 - uy * (2 + i * 2) + (i ? 1 : -1)), 'fx_dot').setDepth(5).setAlpha(0.55).setTint(0xcfc8b0);
+      this.tweens.add({ targets: d, x: Math.round(d.x - ux * 6), y: Math.round(d.y - 2), alpha: 0, duration: 240, onComplete: () => d.destroy() });
+    }
+  }
+
+  // a hard turn or a hard stop: the boots slide, so dust is thrown on ahead along the old direction
+  skidDust(x, y, vx, vy, n = 3) {
+    const l = Math.hypot(vx, vy) || 1, ux = vx / l, uy = vy / l;
+    for (let i = 0; i < n; i++) {
+      const big = i === 0;
+      const d = this.add.image(Math.round(x + (Math.random() - 0.5) * 5), Math.round(y + 6 + (Math.random() - 0.5) * 3), big ? 'fx_puff' : 'fx_dot').setDepth(5).setAlpha(big ? 0.4 : 0.6).setTint(0xcfc8b0);
+      this.tweens.add({ targets: d, x: Math.round(d.x + ux * (6 + Math.random() * 6)), y: Math.round(d.y + uy * 4 - 2 - Math.random() * 2), alpha: 0, duration: 260 + Math.random() * 120, ease: 'Quad.easeOut', onComplete: () => d.destroy() });
+    }
+  }
+
+  // end of a roll: a flat ring of dust where you land
+  landDust(x, y) {
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + Math.random() * 0.5;
+      const d = this.add.image(Math.round(x), Math.round(y + 6), i % 2 ? 'fx_dot' : 'fx_puff').setDepth(5).setAlpha(0.55).setTint(0xcfc8b0);
+      this.tweens.add({ targets: d, x: Math.round(x + Math.cos(a) * 11), y: Math.round(y + 6 + Math.sin(a) * 5), alpha: 0, duration: 300, ease: 'Quad.easeOut', onComplete: () => d.destroy() });
+    }
+  }
+
+  // thin streaks left in the air behind a roll
+  speedStreak(x, y, angle) {
+    const o = (Math.random() - 0.5) * 12, ca = Math.cos(angle), sa = Math.sin(angle);
+    const s = this.add.image(Math.round(x - ca * 6 - sa * o), Math.round(y - sa * 6 + ca * o), 'fx_streak').setDepth(8.5).setRotation(angle).setAlpha(0.55).setTint(0xf0e6c8);
+    this.tweens.add({ targets: s, x: Math.round(s.x - ca * 8), y: Math.round(s.y - sa * 8), alpha: 0, duration: 150, onComplete: () => s.destroy() });
+  }
+
+  // a flash at the muzzle that lasts a couple of frames
+  muzzleFlash(x, y, angle, color = 0xffffff, glow = 0.55) {
+    const f = this.add.image(Math.round(x), Math.round(y), 'fx_muzzle').setDepth(13).setOrigin(0, 0.5).setRotation(angle).setTint(color).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: f, alpha: 0, duration: 70, onComplete: () => f.destroy() });
+    this.glowPop(x, y, color, glow, 110); // a little light on the floor around it
+  }
+
+  // a soft additive flash of light that fades fast (muzzle flashes, spells going off, shields breaking)
+  glowPop(x, y, color, scale = 0.6, ms = 140, alpha = 0.55) {
+    const g = this.add.image(Math.round(x), Math.round(y), 'fx_glow').setDepth(12.9).setTint(color).setAlpha(alpha).setScale(scale).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: g, alpha: 0, scale: scale * 1.35, duration: ms, ease: 'Quad.easeOut', onComplete: () => g.destroy() });
+  }
+
+  // motes that float up off something (heals, buffs, mana): n of them, spread around (x, y)
+  riseFx(x, y, color, n = 8, spread = 9, height = 22) {
+    for (let i = 0; i < n; i++) {
+      const d = this.add.image(Math.round(x + (Math.random() - 0.5) * spread * 2), Math.round(y + 3 + Math.random() * 4), 'fx_dot').setDepth(11.7).setTint(i % 3 ? color : 0xffffff).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: d, alpha: 1, duration: 90, delay: i * 38 });
+      this.tweens.add({ targets: d, y: d.y - height - Math.random() * 10, x: d.x + (Math.random() - 0.5) * 6, delay: i * 38, duration: 520 + Math.random() * 260, ease: 'Sine.easeOut', onComplete: () => d.destroy() });
+      this.tweens.add({ targets: d, alpha: 0, delay: i * 38 + 330, duration: 400 });
+    }
+  }
+
+  // the first moment of a skill: its own colour, its own shape of effect
+  skillFx(x, y, kind) {
+    const C = { heal: 0x7fe8a0, secondwind: 0x7fe8a0, mana: 0x6fa8ff, shield: 0x9fd8ff, mark: 0xff6a5a, cdcut: 0xc9a6ff, bloodlust: 0xff4a4a, lifesteal: 0xff4a6a, predator: 0xffb04a, berserk: 0xff3a2a, buff: 0xffe27a };
+    const c = C[kind] || C.buff;
+    this.ringFx(x, y, c, 3);
+    this.glowPop(x, y, c, 1.0, 260, 0.6);
+    if (kind === 'heal' || kind === 'secondwind') this.riseFx(x, y, c, 12, 9, 26);
+    else if (kind === 'mana') this.riseFx(x, y, c, 10, 8, 24);
+    else if (kind === 'shield') this.shockwave(x, y, c, 0.35);
+    else if (kind === 'mark') this.ringFx(x, y, c, 2);
+    else this.riseFx(x, y, c, 9, 8, 22);
+    return c;
+  }
+
+  // an enemy arrow or orb lands: a burst in its own colour (a ring too for the orbs)
+  enemyShotImpact(p) {
+    const orb = p.texture && p.texture.key !== 'p_arrow';
+    this.spark(p.x, p.y);
+    this.burst(p.x, p.y, p.trailColor || 0xffffff, orb ? 10 : 6, orb ? 14 : 9, 2);
+    if (orb) { this.ringFx(p.x, p.y, p.trailColor || 0xb48aff, 1); this.glowPop(p.x, p.y, p.trailColor || 0xb48aff, 0.5, 160); }
+  }
+
+  // a spent casing pops out sideways, bounces once and lies there a moment
+  casingFx(x, y, angle) {
+    const side = angle + Math.PI / 2 + (Math.random() - 0.5) * 0.6;
+    const c = this.add.image(Math.round(x), Math.round(y), 'fx_casing').setDepth(10);
+    const sp = 26 + Math.random() * 18, vh = 55 + Math.random() * 25, dur = 0.42, spin = (Math.random() - 0.5) * 22;
+    this.tweens.addCounter({
+      from: 0, to: 1, duration: dur * 1000,
+      onUpdate: (tw) => {
+        const t = tw.getValue() * dur;
+        let h = vh * t - 200 * t * t;
+        if (h < 0) h = Math.abs(h) * 0.25; // one little bounce
+        c.setPosition(Math.round(x + Math.cos(side) * sp * t), Math.round(y + Math.sin(side) * sp * t * 0.7 - h));
+        c.setRotation(spin * t);
+      },
+      onComplete: () => { if (c.scene) this.tweens.add({ targets: c, alpha: 0, delay: 700, duration: 400, onComplete: () => c.destroy() }); },
+    });
+  }
+
+  // the staff comes down: a ring of dust, rocks thrown up and a flash on the ground
+  shockwave(x, y, color, pow) {
+    this.ringFx(x, y, color, 1 + Math.round(pow * 2));
+    const n = 6 + Math.round(pow * 8);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * 0.4;
+      const d = this.add.image(Math.round(x), Math.round(y + 2), i % 3 ? 'fx_puff' : 'fx_dot').setDepth(5).setAlpha(0.5).setTint(0xcfc8b0);
+      const r = 10 + pow * 14 + Math.random() * 6;
+      this.tweens.add({ targets: d, x: Math.round(x + Math.cos(a) * r), y: Math.round(y + 2 + Math.sin(a) * r * 0.5), alpha: 0, duration: 320, ease: 'Quad.easeOut', onComplete: () => d.destroy() });
+    }
+    const rocks = Math.round(2 + pow * 5);
+    for (let i = 0; i < rocks; i++) {
+      const b = this.add.image(Math.round(x), Math.round(y), 'fx_rust').setDepth(11);
+      const a = Math.random() * Math.PI * 2, sp = 14 + Math.random() * 26 * (0.5 + pow), vh = 70 + Math.random() * 60, dur = 0.34 + Math.random() * 0.12;
+      this.tweens.addCounter({
+        from: 0, to: 1, duration: dur * 1000,
+        onUpdate: (tw) => {
+          const t = tw.getValue() * dur;
+          b.setPosition(Math.round(x + Math.cos(a) * sp * t), Math.round(y + Math.sin(a) * sp * t * 0.6 - Math.max(0, vh * t - 260 * t * t)));
+        },
+        onComplete: () => { if (b.scene) this.tweens.add({ targets: b, alpha: 0, duration: 260, onComplete: () => b.destroy() }); },
+      });
+    }
+  }
+
+  // embers off the torches that are on screen and a few motes of dust in the air
+  ambientFx(dt) {
+    const v = this.cameras.main.worldView;
+    this.emberT = (this.emberT || 0) - dt;
+    if (this.emberT <= 0) {
+      this.emberT = 0.18;
+      for (const t of this.torchList || []) {
+        if (t.x < v.x - 8 || t.x > v.right + 8 || t.y < v.y - 8 || t.y > v.bottom + 8) continue;
+        if (Math.random() < 0.55) this.emberFx(t.x, t.y, t.col);
+      }
+    }
+    this.dustT = (this.dustT || 0) - dt;
+    if (this.dustT <= 0) { this.dustT = 0.5; this.airDust(); }
+  }
+
+  // sparks and soot off a torch, drifting up
+  emberFx(x, y, color, depth = 1.6) {
+    const d = this.add.image(Math.round(x + (Math.random() - 0.5) * 4), Math.round(y), 'fx_dot').setDepth(depth).setTint(Math.random() < 0.3 ? 0xffe9a0 : color).setBlendMode(Phaser.BlendModes.ADD);
+    const sway = (Math.random() - 0.5) * 8;
+    this.tweens.add({ targets: d, x: Math.round(d.x + sway), y: Math.round(d.y - 10 - Math.random() * 8), alpha: 0, duration: 700 + Math.random() * 500, ease: 'Sine.easeOut', onComplete: () => d.destroy() });
+  }
+
+  // a speck of dust hanging in the air somewhere on screen
+  airDust() {
+    const cam = this.cameras.main, v = cam.worldView;
+    const x = v.x + Math.random() * v.width, y = v.y + Math.random() * v.height;
+    const d = this.add.image(Math.round(x), Math.round(y), 'fx_dot').setDepth(12.5).setAlpha(0).setTint(0xdcd4c0);
+    this.tweens.add({ targets: d, alpha: 0.28, duration: 700, yoyo: true, hold: 900, onComplete: () => d.destroy() });
+    this.tweens.add({ targets: d, x: Math.round(x + 8 + Math.random() * 6), y: Math.round(y - 5), duration: 2400, ease: 'Sine.easeInOut' });
+  }
+
+  // a little mote that drifts up and fades (the floating book)
+  floatMote(x, y, color) {
+    const d = this.add.image(Math.round(x), Math.round(y), 'fx_dot').setDepth(11.6).setTint(color).setAlpha(0.9).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: d, y: d.y - 8, alpha: 0, duration: 700, ease: 'Sine.easeOut', onComplete: () => d.destroy() });
+  }
+
+  // blessing motes around the player: falling leaves / rising gold / blue sparks / violet flecks drawn in
+  ambientMote(type, x, y, color) {
+    const a = Math.random() * Math.PI * 2, r = 6 + Math.random() * 8;
+    const px = Math.round(x + Math.cos(a) * r), py = Math.round(y + Math.sin(a) * r * 0.7);
+    const d = this.add.image(px, py, 'fx_dot').setDepth(11.4).setTint(type === 'natural' ? 0x6ed48a : color).setBlendMode(Phaser.BlendModes.ADD);
+    const T = { targets: d, alpha: 0, onComplete: () => d.destroy() };
+    if (type === 'natural') this.tweens.add({ ...T, x: px - 6, y: py + 12, duration: 1100, ease: 'Sine.easeInOut' }); // a leaf drifting down
+    else if (type === 'divine') this.tweens.add({ ...T, y: py - 14, duration: 1000, ease: 'Sine.easeOut' }); // light rising
+    else if (type === 'arcane') this.tweens.add({ ...T, x: px + Math.cos(a + 1.4) * 10, y: py + Math.sin(a + 1.4) * 7, duration: 700, ease: 'Quad.easeOut' }); // a spark flung sideways
+    else { d.setPosition(Math.round(x + Math.cos(a) * 20), Math.round(y + Math.sin(a) * 14)); this.tweens.add({ ...T, x: Math.round(x), y: Math.round(y), duration: 800, ease: 'Quad.easeIn' }); } // drawn into the void
+  }
+
+  // a mote that flies in to (tx, ty) from `r` pixels away: a spell gathering
+  gatherFx(tx, ty, color, r = 16) {
+    const a = Math.random() * Math.PI * 2;
+    const d = this.add.image(Math.round(tx + Math.cos(a) * r), Math.round(ty + Math.sin(a) * r), 'fx_dot').setDepth(11.6).setTint(color).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: d, x: tx, y: ty, alpha: 0.2, duration: 200, ease: 'Quad.easeIn', onComplete: () => d.destroy() });
   }
 
   trailDot(x, y, color, ms = 160) {
@@ -773,12 +985,29 @@ export class PlayScene extends Phaser.Scene {
     this._hsT = setTimeout(() => { try { this.physics.world.isPaused = false; } catch (e) { /* scene gone */ } }, Math.max(1, this.hitStopUntil - now));
   }
 
-  afterimage(pl) {
+  afterimage(pl, tint = 0xf0d9a0, alpha = 0.4, ms = 220) {
     const s = pl.sprite;
     for (const key of ['player', 'player_hood']) {
-      const g = this.add.image(s.x, s.y, key).setDepth(9).setRotation(s.rotation).setAlpha(0.4).setTint(0xf0d9a0);
-      this.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
+      const g = this.add.image(s.x, s.y, key).setDepth(9).setRotation(s.rotation).setAlpha(alpha).setTint(tint);
+      this.tweens.add({ targets: g, alpha: 0, duration: ms, onComplete: () => g.destroy() });
     }
+  }
+
+  // an empty magazine drops out of the weapon, bounces once and fades
+  magFx(x, y, angle) {
+    const side = angle + Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1);
+    const m = this.add.rectangle(Math.round(x), Math.round(y), 2, 5, 0x3a3f4a).setDepth(10).setStrokeStyle(1, 0x14101f);
+    const sp = 14 + Math.random() * 10, vh = 40 + Math.random() * 20, dur = 0.5, spin = (Math.random() - 0.5) * 8;
+    this.tweens.addCounter({
+      from: 0, to: 1, duration: dur * 1000,
+      onUpdate: (tw) => {
+        const t = tw.getValue() * dur;
+        let h = vh * t - 190 * t * t;
+        if (h < 0) h = Math.abs(h) * 0.2;
+        m.setPosition(Math.round(x + Math.cos(side) * sp * t), Math.round(y + Math.sin(side) * sp * t * 0.6 + 4 - h)).setRotation(spin * t);
+      },
+      onComplete: () => { if (m.scene) this.tweens.add({ targets: m, alpha: 0, delay: 900, duration: 400, onComplete: () => m.destroy() }); },
+    });
   }
 
   // Camera leads the player a touch in the direction of travel and aim. It used to swing up to 36px with the
@@ -867,14 +1096,15 @@ export class PlayScene extends Phaser.Scene {
       firePressed: fire && !this.prevFire,
       fireReleased: !fire && this.prevFire,
       dodge: J(k.SPACE) || !!pressed.dodge,
-      skill1: J(k.ONE) || !!pressed.slot0,
-      skill2: J(k.TWO) || !!pressed.slot1,
-      skill3: J(k.THREE) || !!pressed.slot2,
+      skills: J(k.F) || !!pressed.skills, // opens the skill wheel (and, with the wheel open, uses the chosen skill)
+      wheelUse: !!pressed.wheelUse,
+      wheelClose: !!pressed.wheelClose,
       berserk: J(k.R) || !!pressed.berserk,
       swap: J(k.Q) || !!pressed.swap || !!(this._wheelSwap && !(this._wheelSwap = false)),
       interact: J(k.E) || !!pressed.use,
       menu: J(k.TAB) || J(k.ESC) || !!pressed.menu,
       mute: J(k.N),
+      lock: J(k.T) || !!pressed.lock,
       map: J(k.M),
     };
     this.prevFire = fire;
@@ -887,9 +1117,13 @@ export class PlayScene extends Phaser.Scene {
     const dt = Math.min(0.05, delta / 1000) * (this.slowUntil ? this.slowK : 1);
     if (performance.now() < this.hitStopUntil) return; // hit-stop freeze
     const inp = this.readInput();
-    if (inp.menu && performance.now() > (this.menuLockUntil || 0)) { G.ui.openMenu(); return; }
+    const wheel = G.hud.wheel;
+    if (wheel.isOpen) this.driveWheel(inp, wheel);
+    else if (inp.skills && !this.player.dead) this.openWheel();
+    if (inp.menu && performance.now() > (this.menuLockUntil || 0)) { this.closeWheel(); G.ui.openMenu(); return; }
     if (inp.mute) { G.muted = !G.muted; G.ui.toast(G.muted ? 'SOUND OFF' : 'SOUND ON', 'info'); }
     if (inp.map) G.hud.toggleBigMap();
+    if (inp.lock) this.toggleLockOn();
 
     // target list
     this.targets = [...this.enemyList.filter((e) => e.alive), ...this.dummyList];
@@ -903,12 +1137,33 @@ export class PlayScene extends Phaser.Scene {
       if (!p.active) continue;
       p.life -= dt;
       if (p.life <= 0) { p.destroy(); continue; }
+      if (p.home) { // spells bend gently towards the target they were thrown at (never turning back on themselves)
+        if (!p.home.alive) p.home = null;
+        else {
+          const v = p.body.velocity, sp = Math.hypot(v.x, v.y), cur = Math.atan2(v.y, v.x);
+          let d = Phaser.Math.Angle.Wrap(Math.atan2(p.home.y - p.y, p.home.x - p.x) - cur);
+          if (Math.abs(d) < 1.3) {
+            const mx = (p.homeRate || 2) * dt;
+            d = Math.max(-mx, Math.min(mx, d));
+            p.setVelocity(Math.cos(cur + d) * sp, Math.sin(cur + d) * sp);
+          }
+        }
+      }
       if (p.trail) { // fast shots and spells leave a short glittering tail
         p.trailT = (p.trailT || 0) - dt;
         if (p.trailT <= 0) { p.trailT = p.trail.every; this.trailDot(p.x, p.y, p.trail.color, p.trail.ms); }
       }
     }
+    for (const p of this.enemyShots.getChildren()) { // enemy arrows and orbs
+      if (!p.active) continue;
+      p.life -= dt;
+      if (p.life <= 0) { p.destroy(); continue; }
+      p.trailT -= dt;
+      if (p.trailT <= 0) { p.trailT = 0.05; this.trailDot(p.x, p.y, p.trailColor, 130); }
+      if (p.halo) p.halo.setPosition(p.x, p.y).setScale((p.texture.key === 'p_arrow' ? 0.35 : 0.62 + Math.sin(this.time.now / 60) * 0.1));
+    }
     this.orbs.update(dt, this.player);
+    this.ambientFx(dt);
 
     // interactions
     this.updateInteract(inp);
@@ -1094,33 +1349,166 @@ export class PlayScene extends Phaser.Scene {
     if (best && inp.interact) best.act();
   }
 
+  // an arrow or an orb from an archer / mage
+  enemyShoot(x, y, angle, speed, key, tint, dmg, crit, trailColor) {
+    const p = this.enemyShots.create(x, y, key).setDepth(12);
+    p.body.setCircle(3, p.width / 2 - 3, p.height / 2 - 3);
+    p.setRotation(key === 'p_arrow' ? angle : 0).setTint(tint);
+    p.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    p.life = 2.4; p.dmg = dmg; p.crit = crit; p.trailColor = trailColor; p.trailT = 0;
+    // a soft halo rides along with it so it reads as a danger in the dark (orbs glow bigger than arrows)
+    const orb = key !== 'p_arrow';
+    p.halo = this.add.image(x, y, 'fx_glow').setDepth(11.8).setTint(orb ? tint : 0xffe0b0).setBlendMode(Phaser.BlendModes.ADD).setScale(orb ? 0.7 : 0.35).setAlpha(orb ? 0.6 : 0.35);
+    p.once('destroy', () => { if (p.halo) p.halo.destroy(); });
+    return p;
+  }
+
+  // handy for testing and the demo tools: put a skeleton of a given kind somewhere
+  spawnEnemy(kind, x, y, level = null) {
+    const idx = 900 + this.enemyList.length;
+    const e = new Skeleton(this, x, y, level || G.profile.level, 1, idx, null, kind);
+    this.enemyGroup.add(e.sprite);
+    e.sprite.body.setCircle(6, 4, 4);
+    this.enemyList.push(e);
+    return e;
+  }
+
+  // ---- the skill wheel (key F, or the skill button): the world slows right down while you choose
+  openWheel() {
+    const p = G.profile;
+    if (!G.hud.wheel.open(p.selSkill, p.skills)) { G.ui.toast('No skills yet.', 'warn'); return; }
+    this.slowMo(0.2, 3600000);
+    this._fDownAt = performance.now();
+    this._fHold = true;
+    sfx('wheelopen');
+  }
+  closeWheel(quiet = false) {
+    if (!G.hud || !G.hud.wheel.isOpen) return;
+    G.hud.wheel.close();
+    this.endSlowMo();
+    if (!quiet) sfx('wheelclose');
+  }
+  confirmWheel() {
+    const id = G.hud.wheel.selectedId();
+    if (!id) return;
+    G.profile.selSkill = id;
+    if (this.player.useSkill(id) === true) this.closeWheel(true);
+  }
+  // while the wheel is open: Q / E (or the mouse wheel) scroll, F or ENTER uses, ESC closes; holding F and letting go also uses
+  driveWheel(inp, wheel) {
+    const k = this.keys;
+    if (inp.skills) { this.confirmWheel(); this._fHold = false; }
+    else if (inp.wheelUse) this.confirmWheel();
+    else if (inp.wheelClose || inp.menu) { this.closeWheel(); inp.menu = false; this.menuLockUntil = performance.now() + 250; }
+    else if (this._fHold && !k.F.isDown) { if (performance.now() - this._fDownAt > 350) this.confirmWheel(); this._fHold = false; }
+    if (Phaser.Input.Keyboard.JustDown(k.ENTER)) this.confirmWheel();
+    if (inp.swap) wheel.step(-1);
+    if (inp.interact) wheel.step(1);
+    inp.swap = false; inp.interact = false; inp.fire = false; inp.firePressed = false; inp.dodge = false;
+  }
+
+  toggleLockOn() {
+    G.settings.lockOn = G.settings.lockOn === false;
+    saveSettings();
+    G.ui.toast(G.settings.lockOn ? 'LOCK-ON: ON' : 'LOCK-ON: OFF (aim by hand)', 'info');
+    const p = this.player, on = G.settings.lockOn;
+    sfx(on ? 'lockon' : 'lockoff');
+    if (p && !p.dead) {
+      this.floatText(p.x, p.y - 20, on ? 'LOCK ON' : 'LOCK OFF', on ? 0x9fe8ff : 0xa8a0b0, 1);
+      if (on) this.ringFx(p.x, p.y, 0x9fe8ff, 2);
+    }
+  }
+
+  // the staff's aim help: a dotted line from the staff towards where it will go, a reticle on the locked target,
+  // and (at full charge) the size of the burst it will make there
+  drawMagicAim(g, p, f) {
+    const tg = p.lockTarget && p.lockTarget.alive ? p.lockTarget : null;
+    const from = p.staffTip || { x: p.x, y: p.y };
+    const toA = tg ? Math.atan2(tg.y - from.y, tg.x - from.x) : p.aim;
+    const len = tg ? Math.min(150, Math.hypot(tg.x - from.x, tg.y - from.y)) : 110;
+    const col = tg ? 0xffe27a : 0xbfd0ff;
+    const t = this.time.now / 90;
+    for (let d = 14; d < len; d += 6) {
+      const a = 0.12 + 0.5 * f * (1 - d / (len + 40));
+      if (a <= 0) break;
+      g.fillStyle(col, a * (Math.floor(d / 6 - t) % 3 === 0 ? 1.4 : 0.8)).fillRect(Math.round(from.x + Math.cos(toA) * d), Math.round(from.y + Math.sin(toA) * d), 1, 1);
+    }
+    if (!tg) return;
+    let r = this.reticles[0];
+    if (!r) { r = this.add.image(0, 0, 'fx_reticle').setDepth(44); this.reticles[0] = r; }
+    r.setVisible(true).setPosition(Math.round(tg.x), Math.round(tg.y)).setAlpha(0.6 + 0.4 * f).setScale(1);
+    if (f >= 1) { // the burst radius, drawn as a dotted ring
+      const R = p.weaponDef.charge.aoe;
+      for (let i = 0; i < 28; i++) {
+        if ((i + Math.floor(t / 2)) % 2) continue;
+        const a = (i / 28) * Math.PI * 2;
+        g.fillStyle(0xff9a6a, 0.8).fillRect(Math.round(tg.x + Math.cos(a) * R), Math.round(tg.y + Math.sin(a) * R * 0.9), 1, 1);
+      }
+    }
+  }
+
   // focus bar + lock-on reticles for rangers
   drawFocus() {
     const g = this.focusGfx;
     g.clear();
     const p = this.player;
     for (const r of this.reticles) r.setVisible(false);
+    // a magazine weapon reloading: a thin ring that fills while the new magazine goes in
+    if (p.reload > 0 && p.weaponDef.mag && !p.dead) {
+      const rf = 1 - p.reload / p.weaponDef.reload;
+      this.focusRing(g, p.x, p.y, 13, rf, rf > 0.85 ? 0xffffff : 0xd8c9a0, null, true);
+    }
+    if (p.charging) { // staff charge: a ring that fills up and flashes when full; a tick marks where a charge starts to count
+      const c = p.weaponDef.charge, f = Math.min(1, p.chargeT / c.time);
+      this.drawMagicAim(g, p, f);
+      const full = f >= 1 && Math.floor(this.time.now / 90) % 2;
+      this.focusRing(g, p.x, p.y, 15, f, full ? 0xffffff : f >= 0.55 ? 0xc27bff : 0x8fb4ff, c.min / c.time);
+      return;
+    }
     if (!p.focusing) return;
     // highlight everything in view; locked target gets the bright reticle
     const cam = this.cameras.main;
     let n = 0;
-    for (const t of this.targets) {
+    for (const t of G.settings.lockOn === false ? [] : this.targets) {
       if (!t.alive) continue;
       if (!cam.worldView.contains(t.x, t.y)) continue;
       if (Math.hypot(t.x - p.x, t.y - p.y) > 260) continue;
       let r = this.reticles[n];
       if (!r) { r = this.add.image(0, 0, 'fx_reticle').setDepth(44); this.reticles[n] = r; }
       const locked = t === p.lockTarget;
-      r.setVisible(true).setPosition(t.x, t.y).setAlpha(locked ? 1 : 0.35).setScale(1);
+      // the bright reticle snaps in (big, then settles) the moment a new target is locked, and breathes while it holds
+      if (locked && this._lockPrev !== t) { this._lockPrev = t; this._lockAt = this.time.now; sfx('lock'); }
+      const age = (this.time.now - (this._lockAt || 0)) / 1000;
+      const snapK = locked ? Math.max(0, 1 - age / 0.14) : 0;
+      r.setVisible(true).setPosition(t.x, t.y).setAlpha(locked ? 1 : 0.35).setScale(1 + snapK * 0.7);
+      if (locked) r.setTint(Math.floor(this.time.now / 140) % 2 && snapK === 0 && p.focus >= 1 ? 0xffe27a : 0xffffff); else r.clearTint();
       n++;
     }
-    // focus meter above the player
-    const w = 30, x = p.x - w / 2, y = p.y - 17;
+    if (!p.lockTarget) this._lockPrev = null;
+    // focus ring around the player: the inner ring fills to 100%, then an outer ring takes it on to 200%
     const f = p.focus;
-    g.fillStyle(0x0a0612, 0.9).fillRect(x - 1, y - 1, w + 2, 5);
-    g.fillStyle(0x2a1424, 1).fillRect(x, y, w, 3);
-    g.fillStyle(f > 1.5 ? 0xff9a3a : f >= 1 ? 0xffe27a : 0x6fd2ff, 1).fillRect(x, y, w * Math.min(1, f / 2), 3);
-    g.fillStyle(0xffffff, 0.7).fillRect(x + w * 0.5, y - 1, 1, 5); // 100% marker
-    g.fillStyle(0xff9a3a, 0.9).fillRect(x + w * 0.75, y - 1, 1, 5); // 150% marker
+    const fullBlink = f >= 1 && Math.floor(this.time.now / 110) % 2;
+    this.focusRing(g, p.x, p.y, 15, Math.min(1, f), f >= 1 ? (fullBlink && f < 1.12 ? 0xffffff : 0xffe27a) : 0x6fd2ff);
+    if (f > 1) this.focusRing(g, p.x, p.y, 19, Math.min(1, f - 1), f > 1.5 ? 0xff9a3a : 0xffe27a, null, true);
+  }
+
+  // A pixel ring that fills clockwise from the top. `mark` (0..1) puts a tick on it. All whole pixels.
+  focusRing(g, cx, cy, r, frac, color, mark = null, thin = false) {
+    const n = Math.round(Math.PI * 2 * r * 1.15);
+    cx = Math.round(cx); cy = Math.round(cy);
+    const pt = (a) => [cx + Math.round(Math.cos(a) * r), cy + Math.round(Math.sin(a) * r)];
+    for (let i = 0; i < n; i++) { // dark edge + empty track
+      const [x, y] = pt(-Math.PI / 2 + (i / n) * Math.PI * 2);
+      g.fillStyle(0x0a0612, 0.85).fillRect(x - 1, y - 1, 3, 3);
+    }
+    for (let i = 0; i < n; i++) {
+      const u = i / n, [x, y] = pt(-Math.PI / 2 + u * Math.PI * 2);
+      if (u < frac) g.fillStyle(color, 1).fillRect(x, y, 1, 1);
+      else g.fillStyle(0x3a2a44, 0.9).fillRect(x, y, 1, 1);
+    }
+    if (mark != null) { // a bright tick on the ring
+      const a = -Math.PI / 2 + mark * Math.PI * 2;
+      for (const k of [-2, 0, 2]) { const x = cx + Math.round(Math.cos(a) * (r + k)), y = cy + Math.round(Math.sin(a) * (r + k)); g.fillStyle(0xffffff, 0.9).fillRect(x, y, 1, 1); }
+    }
   }
 }

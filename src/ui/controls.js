@@ -27,6 +27,9 @@ export function initLayoutWatcher(onChange) {
     const hs = (window.__tower && window.__tower.G && window.__tower.G.settings && window.__tower.G.settings.hudScale) || 'auto';
     const autoUi = vh >= 1250 && vw >= 2300 ? 3 : vw >= 1440 && vh >= 720 ? 2 : 1;
     const ui = touch ? 1 : hs === 'auto' ? autoUi : +hs;
+    // phones and tablets: the health / stamina block is drawn bigger (testers: too small to read). Tablets get 2x, phones 1.5x.
+    const tz = !touch ? 1 : hs !== 'auto' ? +hs : Math.min(vw, vh) >= 700 ? 2 : 1.5;
+    document.documentElement.style.setProperty('--tz', String(tz));
     document.documentElement.style.setProperty('--ui', String(ui));
     document.documentElement.style.setProperty('--aw', Math.floor(vw / ui) + 'px'); // the space menus have, in their own (scaled) pixels
     document.documentElement.style.setProperty('--ah', Math.floor(vh / ui) + 'px');

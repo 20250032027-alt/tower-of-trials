@@ -84,7 +84,7 @@ export const PLAYER_BASE = {
 
 // ---- Combat-state rules ---------------------------------------------
 export const COMBAT_TIMEOUT = 5; // [PLACEHOLDER] seconds without hit/hurt -> "out of combat"
-export const TRAIT_SLOTS = 3; // [PLACEHOLDER] how many traits you can equip at once
+export const TRAIT_SLOTS = 1; // [PLACEHOLDER] testers: ONE trait per run (skills are separate and unlimited)
 
 // ---- Sword Aura / Berserk (sheet) -----------------------------------
 export const BERSERK = {
