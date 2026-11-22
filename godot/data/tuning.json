@@ -1,0 +1,227 @@
+[
+ {
+  "name": "PROGRESSION",
+  "note": "Lower = slower.",
+  "items": [
+   {
+    "key": "xpRate",
+    "label": "XP gained",
+    "def": 0.6,
+    "min": 0.1,
+    "max": 3,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "profRate",
+    "label": "Weapon proficiency gained",
+    "def": 0.5,
+    "min": 0.1,
+    "max": 3,
+    "step": 0.05,
+    "fmt": "x"
+   }
+  ]
+ },
+ {
+  "name": "RECOVERY",
+  "note": "Mana and stamina.",
+  "items": [
+   {
+    "key": "manaRegen",
+    "label": "Mana recovery",
+    "def": 0.5,
+    "min": 0.05,
+    "max": 3,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "staminaStill",
+    "label": "Stamina recovery while standing still",
+    "def": 1.8,
+    "min": 0.5,
+    "max": 4,
+    "step": 0.1,
+    "fmt": "x"
+   },
+   {
+    "key": "staminaMoving",
+    "label": "Stamina recovery while moving",
+    "def": 1,
+    "min": 0.1,
+    "max": 3,
+    "step": 0.1,
+    "fmt": "x"
+   }
+  ]
+ },
+ {
+  "name": "RANGED",
+  "note": "Seconds to a full focus: lower = faster. Bow is slowest, then crossbow, then guns.",
+  "items": [
+   {
+    "key": "bowSec",
+    "label": "Bow: full draw",
+    "def": 2.9,
+    "min": 0.5,
+    "max": 6,
+    "step": 0.1,
+    "fmt": "s"
+   },
+   {
+    "key": "crossbowSec",
+    "label": "Crossbow: time between shots",
+    "def": 0.34,
+    "min": 0.1,
+    "max": 2,
+    "step": 0.02,
+    "fmt": "s"
+   },
+   {
+    "key": "pistolSec",
+    "label": "Pistol: full focus",
+    "def": 0.45,
+    "min": 0.1,
+    "max": 3,
+    "step": 0.05,
+    "fmt": "s"
+   },
+   {
+    "key": "m4Sec",
+    "label": "M4: time between shots",
+    "def": 0.09,
+    "min": 0.04,
+    "max": 0.5,
+    "step": 0.01,
+    "fmt": "s"
+   }
+  ]
+ },
+ {
+  "name": "WEAPON DAMAGE",
+  "note": "A multiplier on each weapon.",
+  "items": [
+   {
+    "key": "dmg_training_sword",
+    "label": "Sword",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_training_claymore",
+    "label": "Claymore",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_training_spear",
+    "label": "Spear",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_training_bow",
+    "label": "Bow",
+    "def": 1.25,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_basic_crossbow",
+    "label": "Crossbow",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_one_time_pistol",
+    "label": "Pistol",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_m4",
+    "label": "M4",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_training_mage_book",
+    "label": "Mage Book",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   },
+   {
+    "key": "dmg_training_staff",
+    "label": "Staff",
+    "def": 1,
+    "min": 0.1,
+    "max": 4,
+    "step": 0.05,
+    "fmt": "x"
+   }
+  ]
+ },
+ {
+  "name": "WEAPON SIZE",
+  "note": "Spear reach in pixels (the sprite is drawn shorter, so the reach follows).",
+  "items": [
+   {
+    "key": "spearRange",
+    "label": "Spear reach",
+    "def": 44,
+    "min": 20,
+    "max": 80,
+    "step": 2,
+    "fmt": "px"
+   }
+  ]
+ },
+ {
+  "name": "ENEMIES",
+  "note": "A multiplier on every enemy.",
+  "items": [
+   {
+    "key": "enemyHp",
+    "label": "Enemy health",
+    "def": 1,
+    "min": 0.2,
+    "max": 5,
+    "step": 0.1,
+    "fmt": "x"
+   },
+   {
+    "key": "enemyDmg",
+    "label": "Enemy damage",
+    "def": 1,
+    "min": 0.2,
+    "max": 5,
+    "step": 0.1,
+    "fmt": "x"
+   }
+  ]
+ }
+]

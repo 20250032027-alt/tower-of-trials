@@ -1,0 +1,670 @@
+{
+ "player": [
+  20,
+  20
+ ],
+ "player_hood": [
+  20,
+  20
+ ],
+ "player_scarf": [
+  20,
+  20
+ ],
+ "hero_icon": [
+  20,
+  20
+ ],
+ "skeleton": [
+  20,
+  20
+ ],
+ "shadow": [
+  18,
+  10
+ ],
+ "w_sword": [
+  28,
+  9
+ ],
+ "w_claymore": [
+  38,
+  13
+ ],
+ "w_spear": [
+  32,
+  9
+ ],
+ "w_bow": [
+  12,
+  26
+ ],
+ "w_crossbow": [
+  24,
+  17
+ ],
+ "w_pistol": [
+  18,
+  9
+ ],
+ "w_m4": [
+  34,
+  11
+ ],
+ "w_book": [
+  14,
+  16
+ ],
+ "w_staff": [
+  34,
+  10
+ ],
+ "p_arrow": [
+  11,
+  5
+ ],
+ "p_bolt": [
+  9,
+  5
+ ],
+ "p_bullet": [
+  7,
+  3
+ ],
+ "p_mana_bolt": [
+  9,
+  9
+ ],
+ "p_mana_orb": [
+  15,
+  15
+ ],
+ "p_enemy": [
+  7,
+  7
+ ],
+ "fx_slash_s": [
+  64,
+  64
+ ],
+ "fx_slash_l": [
+  84,
+  84
+ ],
+ "fx_thrust": [
+  60,
+  9
+ ],
+ "fx_spark": [
+  9,
+  9
+ ],
+ "fx_bone": [
+  3,
+  3
+ ],
+ "fx_blood": [
+  3,
+  3
+ ],
+ "fx_dot": [
+  2,
+  2
+ ],
+ "fx_streak": [
+  11,
+  1
+ ],
+ "fx_muzzle": [
+  9,
+  5
+ ],
+ "fx_casing": [
+  2,
+  2
+ ],
+ "fx_alert": [
+  6,
+  9
+ ],
+ "fx_wonder": [
+  6,
+  9
+ ],
+ "fx_reticle": [
+  26,
+  26
+ ],
+ "fx_mark": [
+  9,
+  8
+ ],
+ "fx_heal": [
+  9,
+  9
+ ],
+ "fx_glow": [
+  48,
+  48
+ ],
+ "fx_ring": [
+  40,
+  40
+ ],
+ "fx_cross": [
+  11,
+  11
+ ],
+ "fx_vignette": [
+  480,
+  270
+ ],
+ "fx_vignette_red": [
+  480,
+  270
+ ],
+ "fx_orb_sh": [
+  5,
+  2
+ ],
+ "fx_chunk": [
+  4,
+  3
+ ],
+ "fx_skull": [
+  8,
+  8
+ ],
+ "fx_rib": [
+  8,
+  4
+ ],
+ "fx_femur": [
+  9,
+  3
+ ],
+ "fx_pile": [
+  13,
+  5
+ ],
+ "fx_soul_0": [
+  5,
+  6
+ ],
+ "fx_soul_1": [
+  5,
+  6
+ ],
+ "fx_puff": [
+  5,
+  5
+ ],
+ "fx_rust": [
+  3,
+  3
+ ],
+ "o_dummy": [
+  22,
+  22
+ ],
+ "o_chest": [
+  18,
+  16
+ ],
+ "o_chest_open": [
+  18,
+  16
+ ],
+ "o_sign": [
+  16,
+  16
+ ],
+ "o_altar_loadout": [
+  26,
+  26
+ ],
+ "o_altar_mana": [
+  26,
+  26
+ ],
+ "o_portal_locked": [
+  26,
+  26
+ ],
+ "o_torch_0": [
+  10,
+  12
+ ],
+ "o_torch_1": [
+  10,
+  12
+ ],
+ "w_book_none_0": [
+  14,
+  16
+ ],
+ "w_book_none_1": [
+  14,
+  16
+ ],
+ "w_book_none_2": [
+  14,
+  16
+ ],
+ "w_staff_none": [
+  34,
+  10
+ ],
+ "player_trim_none": [
+  20,
+  20
+ ],
+ "fx_sigil_none_0": [
+  44,
+  44
+ ],
+ "fx_sigil_none_1": [
+  44,
+  44
+ ],
+ "p_sp_none_bolt": [
+  9,
+  9
+ ],
+ "p_sp_none_orb": [
+  15,
+  15
+ ],
+ "p_sp_none_big": [
+  21,
+  21
+ ],
+ "w_book_natural_0": [
+  14,
+  16
+ ],
+ "w_book_natural_1": [
+  14,
+  16
+ ],
+ "w_book_natural_2": [
+  14,
+  16
+ ],
+ "w_staff_natural": [
+  34,
+  10
+ ],
+ "player_trim_natural": [
+  20,
+  20
+ ],
+ "fx_sigil_natural_0": [
+  44,
+  44
+ ],
+ "fx_sigil_natural_1": [
+  44,
+  44
+ ],
+ "p_sp_natural_bolt": [
+  9,
+  9
+ ],
+ "p_sp_natural_orb": [
+  15,
+  15
+ ],
+ "p_sp_natural_big": [
+  21,
+  21
+ ],
+ "w_book_divine_0": [
+  14,
+  16
+ ],
+ "w_book_divine_1": [
+  14,
+  16
+ ],
+ "w_book_divine_2": [
+  14,
+  16
+ ],
+ "w_staff_divine": [
+  34,
+  10
+ ],
+ "player_trim_divine": [
+  20,
+  20
+ ],
+ "fx_sigil_divine_0": [
+  44,
+  44
+ ],
+ "fx_sigil_divine_1": [
+  44,
+  44
+ ],
+ "p_sp_divine_bolt": [
+  9,
+  9
+ ],
+ "p_sp_divine_orb": [
+  15,
+  15
+ ],
+ "p_sp_divine_big": [
+  21,
+  21
+ ],
+ "w_book_arcane_0": [
+  14,
+  16
+ ],
+ "w_book_arcane_1": [
+  14,
+  16
+ ],
+ "w_book_arcane_2": [
+  14,
+  16
+ ],
+ "w_staff_arcane": [
+  34,
+  10
+ ],
+ "player_trim_arcane": [
+  20,
+  20
+ ],
+ "fx_sigil_arcane_0": [
+  44,
+  44
+ ],
+ "fx_sigil_arcane_1": [
+  44,
+  44
+ ],
+ "p_sp_arcane_bolt": [
+  9,
+  9
+ ],
+ "p_sp_arcane_orb": [
+  15,
+  15
+ ],
+ "p_sp_arcane_big": [
+  21,
+  21
+ ],
+ "w_book_extraplanar_0": [
+  14,
+  16
+ ],
+ "w_book_extraplanar_1": [
+  14,
+  16
+ ],
+ "w_book_extraplanar_2": [
+  14,
+  16
+ ],
+ "w_staff_extraplanar": [
+  34,
+  10
+ ],
+ "player_trim_extraplanar": [
+  20,
+  20
+ ],
+ "fx_sigil_extraplanar_0": [
+  44,
+  44
+ ],
+ "fx_sigil_extraplanar_1": [
+  44,
+  44
+ ],
+ "p_sp_extraplanar_bolt": [
+  9,
+  9
+ ],
+ "p_sp_extraplanar_orb": [
+  15,
+  15
+ ],
+ "p_sp_extraplanar_big": [
+  21,
+  21
+ ],
+ "fx_orb_0": [
+  7,
+  7
+ ],
+ "fx_orb_1": [
+  7,
+  7
+ ],
+ "fx_orb_2": [
+  7,
+  7
+ ],
+ "fx_ptr_0": [
+  23,
+  23
+ ],
+ "fx_ptr_1": [
+  23,
+  23
+ ],
+ "fx_ptr_2": [
+  23,
+  23
+ ],
+ "fx_ptr_3": [
+  23,
+  23
+ ],
+ "fx_ptr_4": [
+  23,
+  23
+ ],
+ "fx_ptr_5": [
+  23,
+  23
+ ],
+ "fx_ptr_6": [
+  23,
+  23
+ ],
+ "fx_ptr_7": [
+  23,
+  23
+ ],
+ "fx_ptr_8": [
+  23,
+  23
+ ],
+ "fx_ptr_9": [
+  23,
+  23
+ ],
+ "fx_ptr_10": [
+  23,
+  23
+ ],
+ "fx_ptr_11": [
+  23,
+  23
+ ],
+ "fx_ptr_12": [
+  23,
+  23
+ ],
+ "fx_ptr_13": [
+  23,
+  23
+ ],
+ "fx_ptr_14": [
+  23,
+  23
+ ],
+ "fx_ptr_15": [
+  23,
+  23
+ ],
+ "fx_goal_0": [
+  23,
+  23
+ ],
+ "fx_goal_1": [
+  27,
+  27
+ ],
+ "fx_goal_2": [
+  31,
+  31
+ ],
+ "fx_pulse_0": [
+  13,
+  13
+ ],
+ "fx_pulse_1": [
+  21,
+  21
+ ],
+ "fx_pulse_2": [
+  29,
+  29
+ ],
+ "fx_pulse_3": [
+  37,
+  37
+ ],
+ "fx_pulse_4": [
+  45,
+  45
+ ],
+ "o_portal_0": [
+  26,
+  26
+ ],
+ "o_exit_0": [
+  26,
+  26
+ ],
+ "o_hidden_0": [
+  26,
+  26
+ ],
+ "o_rift_0": [
+  32,
+  32
+ ],
+ "o_portal_1": [
+  26,
+  26
+ ],
+ "o_exit_1": [
+  26,
+  26
+ ],
+ "o_hidden_1": [
+  26,
+  26
+ ],
+ "o_rift_1": [
+  32,
+  32
+ ],
+ "o_portal_2": [
+  26,
+  26
+ ],
+ "o_exit_2": [
+  26,
+  26
+ ],
+ "o_hidden_2": [
+  26,
+  26
+ ],
+ "o_rift_2": [
+  32,
+  32
+ ],
+ "o_portal_3": [
+  26,
+  26
+ ],
+ "o_exit_3": [
+  26,
+  26
+ ],
+ "o_hidden_3": [
+  26,
+  26
+ ],
+ "o_rift_3": [
+  32,
+  32
+ ],
+ "tiles_trial": [
+  96,
+  16
+ ],
+ "tiles_crypt": [
+  96,
+  16
+ ],
+ "tiles_vault": [
+  96,
+  16
+ ],
+ "tiles_rift": [
+  96,
+  16
+ ],
+ "tiles_ossuary": [
+  96,
+  16
+ ],
+ "tiles_cistern": [
+  96,
+  16
+ ],
+ "tiles_foundry": [
+  96,
+  16
+ ],
+ "tiles_archive": [
+  96,
+  16
+ ],
+ "tiles_frost": [
+  96,
+  16
+ ],
+ "tiles_overgrown": [
+  96,
+  16
+ ],
+ "tiles_ember": [
+  96,
+  16
+ ],
+ "tiles_starlit": [
+  96,
+  16
+ ],
+ "tiles_summit": [
+  96,
+  16
+ ],
+ "font": [
+  96,
+  48
+ ]
+}

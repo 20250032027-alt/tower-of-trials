@@ -1,0 +1,203 @@
+{
+ "training_sword": {
+  "id": "training_sword",
+  "name": "Training Sword",
+  "type": "Sword",
+  "cls": "melee",
+  "sheet": {
+   "weight": "Light",
+   "unique": "Average",
+   "speed": "Average"
+  },
+  "damage": 12,
+  "arcDeg": 110,
+  "range": 30,
+  "cooldown": 0.4,
+  "stamina": 0.06,
+  "knockback": 70,
+  "swingTime": 0.21,
+  "windup": 0.3,
+  "sprite": "sword",
+  "baseDamage": 12
+ },
+ "training_claymore": {
+  "id": "training_claymore",
+  "name": "Training Claymore",
+  "type": "Claymore",
+  "cls": "melee",
+  "sheet": {
+   "weight": "Heavy",
+   "unique": "More Damage",
+   "speed": "Slow"
+  },
+  "damage": 26,
+  "arcDeg": 140,
+  "range": 36,
+  "cooldown": 0.95,
+  "stamina": 0.12,
+  "knockback": 160,
+  "swingTime": 0.46,
+  "windup": 0.34,
+  "sprite": "claymore",
+  "baseDamage": 26
+ },
+ "training_spear": {
+  "id": "training_spear",
+  "name": "Training Spear",
+  "type": "Spear",
+  "cls": "melee",
+  "sheet": {
+   "weight": "Light",
+   "unique": "Longer Range",
+   "speed": "Fast"
+  },
+  "damage": 10,
+  "arcDeg": 26,
+  "range": 44,
+  "cooldown": 0.3,
+  "stamina": 0.05,
+  "knockback": 50,
+  "swingTime": 0.26,
+  "windup": 0.3,
+  "sprite": "spear",
+  "baseDamage": 10
+ },
+ "training_bow": {
+  "id": "training_bow",
+  "name": "Training Bow",
+  "type": "Bow",
+  "cls": "ranger",
+  "sheet": {
+   "unique": "Charge",
+   "speed": "Charge-Based"
+  },
+  "damage": 35,
+  "cooldown": 0.35,
+  "stamina": 0.05,
+  "projectileSpeed": 310,
+  "focusRate": 0.8620689655172414,
+  "minFocus": 0.3,
+  "maxProjectileBoost": 1.6,
+  "drawSlow": 0.5,
+  "sprite": "bow",
+  "projectile": "arrow",
+  "baseDamage": 28
+ },
+ "basic_crossbow": {
+  "id": "basic_crossbow",
+  "name": "Basic Crossbow",
+  "type": "Crossbow",
+  "cls": "ranger",
+  "sheet": {
+   "unique": "Quick",
+   "speed": "Fast"
+  },
+  "auto": true,
+  "damage": 15,
+  "cooldown": 0.34,
+  "stamina": 0.03,
+  "projectileSpeed": 380,
+  "focusRate": 1.6,
+  "minFocus": 0,
+  "maxProjectileBoost": 1,
+  "sprite": "crossbow",
+  "projectile": "bolt",
+  "baseDamage": 15
+ },
+ "one_time_pistol": {
+  "id": "one_time_pistol",
+  "name": "One-time Pistol",
+  "type": "Firearm",
+  "cls": "ranger",
+  "sheet": {
+   "unique": "Rare",
+   "speed": "Extremely Fast"
+  },
+  "damage": 15,
+  "cooldown": 0.17,
+  "reload": 0.9,
+  "stamina": 0.03,
+  "projectileSpeed": 560,
+  "focusRate": 5.555555555555555,
+  "minFocus": 0,
+  "maxProjectileBoost": 1,
+  "drawSlow": 0.75,
+  "sprite": "pistol",
+  "projectile": "bullet",
+  "baseDamage": 15
+ },
+ "m4": {
+  "id": "m4",
+  "name": "M4 Carbine",
+  "type": "Firearm",
+  "cls": "ranger",
+  "sheet": {
+   "unique": "Rare",
+   "speed": "Fully Automatic"
+  },
+  "auto": true,
+  "damage": 6,
+  "cooldown": 0.09,
+  "mag": 30,
+  "reload": 1.4,
+  "spread": 0.055,
+  "stamina": 0.006,
+  "projectileSpeed": 600,
+  "focusRate": 8,
+  "minFocus": 0,
+  "maxProjectileBoost": 1,
+  "drawSlow": 0.8,
+  "sprite": "m4",
+  "projectile": "bullet",
+  "baseDamage": 6
+ },
+ "training_mage_book": {
+  "id": "training_mage_book",
+  "name": "Training Mage Book",
+  "type": "Book",
+  "cls": "magic",
+  "sheet": {
+   "unique": "Quick and Fast",
+   "speed": "Casting Time"
+  },
+  "floats": true,
+  "damage": 8,
+  "cooldown": 0.2,
+  "castTime": 0.08,
+  "mana": 4,
+  "projectileSpeed": 260,
+  "sprite": "book",
+  "projectile": "mana_bolt",
+  "radius": 4,
+  "baseDamage": 8
+ },
+ "training_staff": {
+  "id": "training_staff",
+  "name": "Training Staff",
+  "type": "Staff",
+  "cls": "magic",
+  "sheet": {
+   "unique": "More Damage and Slower",
+   "speed": "Casting Time"
+  },
+  "floats": true,
+  "charge": {
+   "time": 1.1,
+   "min": 0.22,
+   "extraMana": 10,
+   "damageMult": 1.8,
+   "slow": 0.4,
+   "aoe": 30,
+   "aoeDamage": 0.6
+  },
+  "damage": 24,
+  "cooldown": 0.55,
+  "castTime": 0.2,
+  "mana": 12,
+  "projectileSpeed": 210,
+  "sprite": "staff",
+  "projectile": "mana_orb",
+  "radius": 7,
+  "baseDamage": 24
+ }
+}

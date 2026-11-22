@@ -1,0 +1,207 @@
+{
+ "RANKS": [
+  {
+   "rank": "F",
+   "min": 1,
+   "max": 10
+  },
+  {
+   "rank": "E",
+   "min": 11,
+   "max": 30
+  },
+  {
+   "rank": "D",
+   "min": 31,
+   "max": 49
+  },
+  {
+   "rank": "C",
+   "min": 50,
+   "max": 79
+  },
+  {
+   "rank": "B",
+   "min": 80,
+   "max": 99
+  },
+  {
+   "rank": "A",
+   "min": 100,
+   "max": 150
+  },
+  {
+   "rank": "S",
+   "min": 151,
+   "max": 1000000000
+  }
+ ],
+ "RANK_COLORS": {
+  "F": "#b7b0a2",
+  "E": "#7fc47f",
+  "D": "#6aa6d8",
+  "C": "#c48bd6",
+  "B": "#e0a64a",
+  "A": "#e0654a",
+  "S": "#ffd84a"
+ },
+ "LEVEL_MIN": 1,
+ "LEVEL_MAX": 50,
+ "BASIC_GROWTH": 0.05,
+ "CRIT_GROWTH": 0.01,
+ "UNITS": {
+  "health": 100,
+  "stamina": 100,
+  "manaPerCircle": 100
+ },
+ "PLAYER_BASE": {
+  "health": 1,
+  "defensePctOfHealth": 0.1,
+  "stamina": 1,
+  "mana": 0,
+  "recovery": {
+   "health": {
+    "combat": 0,
+    "out": 0.01
+   },
+   "stamina": {
+    "combat": 0.05,
+    "out": 0.15
+   },
+   "mana": {
+    "combat": 0.05,
+    "out": 0.05
+   }
+  },
+  "critRate": 0.15,
+  "critDamage": 1.25,
+  "moveSpeed": 1,
+  "dodgeDistance": 1,
+  "dodgeCooldown": 1.5,
+  "dodgeStamina": 0.25,
+  "damage": 1,
+  "meleeDamage": 1,
+  "rangeDamage": 1,
+  "magicDamage": 1,
+  "damageReduction": 0,
+  "weaponProficiencyRate": 1,
+  "focusSpeed": 1,
+  "expRate": 1
+ },
+ "COMBAT_TIMEOUT": 5,
+ "TRAIT_SLOTS": 1,
+ "BERSERK": {
+  "maxCores": 4,
+  "forcePerCore": 0.25,
+  "drainPerSecond": 0.025,
+  "coreRegenSeconds": 15,
+  "decay": {
+   "periodicDamage": 0.05,
+   "moveSpeed": -0.7,
+   "damage": -0.5,
+   "critDamage": -0.5,
+   "critRate": -0.25,
+   "meleeDamage": -0.25,
+   "tickSeconds": 3
+  },
+  "exhaustion": {
+   "moveSpeed": -0.25,
+   "damage": -0.25,
+   "critDamage": -0.25,
+   "meleeDamage": -0.1,
+   "seconds": 8
+  },
+  "baseBuff": {
+   "damage": 0.1,
+   "defense": 0.05,
+   "moveSpeed": 0.05
+  }
+ },
+ "FOCUS": {
+  "secondsTo100": 2.5,
+  "overFocusStart": 1.5,
+  "maxFocus": 2,
+  "staminaPer10Over": 0.05,
+  "lockRange": 170
+ },
+ "MANA_CIRCLE_CHANCE": {
+  "F": {
+   "one": 0.2,
+   "two": 0.03,
+   "talent": "Mana Reserve"
+  },
+  "E": {
+   "one": 0.25,
+   "two": 0.05,
+   "talent": "Focused Mind"
+  },
+  "D": {
+   "one": 0.3,
+   "two": 0.07,
+   "talent": "Mana Surge"
+  },
+  "C": {
+   "one": 0.15,
+   "two": 0.08,
+   "talent": "False Predation"
+  },
+  "B": {
+   "one": 0.5,
+   "two": 0.1,
+   "talent": "Arcane Affinity"
+  },
+  "A": {
+   "one": 0.6,
+   "two": 0.15,
+   "talent": "Fake Mana Heart"
+  },
+  "S": {
+   "one": 0.8,
+   "two": 0.2,
+   "talent": "Gemini's Blessing"
+  }
+ },
+ "MANA_TYPES": {
+  "natural": {
+   "name": "Natural Mana",
+   "desc": "Drawn from the nature within the Tower of [Trials]",
+   "magic": [
+    "Water",
+    "Fire",
+    "Wind",
+    "Geo"
+   ],
+   "color": "#6ed48a"
+  },
+  "divine": {
+   "name": "Divine Mana",
+   "desc": "Granted by higher beings",
+   "magic": [
+    "Healing",
+    "Glutton",
+    "Necromancy"
+   ],
+   "color": "#ffe27a"
+  },
+  "arcane": {
+   "name": "Arcane Mana",
+   "desc": "Harnessed through manipulating mana based on academic theories and formulas",
+   "magic": [
+    "Lightning",
+    "Healing",
+    "Protection"
+   ],
+   "color": "#6fb4ff"
+  },
+  "extraplanar": {
+   "name": "Extraplanar Mana",
+   "desc": "Reality-warping drawn from the overseer of the Tower of [Trials]",
+   "magic": [
+    "Teleportation",
+    "Invisibility"
+   ],
+   "color": "#c27bff"
+  }
+ },
+ "xpToNext": "round(30 + 14 * level)"
+}

@@ -1,0 +1,41 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly (but this one was written by hand, so open it once in Godot 4.4+ and let it re-save).
+
+config_version=5
+
+[application]
+
+config/name="Tower of [Trials]"
+config/description="Godot port of the web demo. See godot/README.md and docs/GODOT_PORT.md"
+run/main_scene="res://scenes/title.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Data="*res://scripts/autoload/data.gd"
+Game="*res://scripts/autoload/game.gd"
+Controls="*res://scripts/autoload/controls.gd"
+
+[display]
+
+window/size/viewport_width=480
+window/size/viewport_height=270
+window/size/window_width_override=1440
+window/size/window_height_override=810
+window/stretch/mode="viewport"
+window/stretch/scale_mode="integer"
+
+[layer_names]
+
+2d_physics/layer_1="walls"
+2d_physics/layer_2="player"
+2d_physics/layer_3="enemies"
+2d_physics/layer_4="dummies"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.0705882, 0.0509804, 0.0392157, 1)

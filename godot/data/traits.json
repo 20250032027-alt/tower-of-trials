@@ -1,0 +1,580 @@
+{
+ "TRAIT_TYPES": {
+  "Basic": {
+   "color": "#c9a77a"
+  },
+  "Melee": {
+   "color": "#7fc47f"
+  },
+  "Ranger": {
+   "color": "#6aa6d8"
+  },
+  "Magic": {
+   "color": "#c48bd6"
+  },
+  "Secret": {
+   "color": "#8a7a99"
+  }
+ },
+ "TRAITS": [
+  {
+   "id": "iron_body",
+   "rank": "F",
+   "name": "Iron Body",
+   "type": "Basic",
+   "effects": "Max Health +25%.",
+   "mods": {
+    "maxHealth": 0.25
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Damage Reduction 10%.",
+    "active": 25,
+    "cooldown": 40,
+    "mods": {
+     "damageReduction": 0.1
+    }
+   }
+  },
+  {
+   "id": "swift_wind",
+   "rank": "F",
+   "name": "Swift Wind",
+   "type": "Basic",
+   "effects": "Movement Speed +25%. Dodge distance +20%.",
+   "mods": {
+    "moveSpeed": 0.25,
+    "dodgeDistance": 0.2
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Max Stamina +25%. Stamina consumption -10%.",
+    "active": 20,
+    "cooldown": 30,
+    "mods": {
+     "maxStamina": 0.25,
+     "staminaCost": -0.1
+    }
+   }
+  },
+  {
+   "id": "battle_instinct",
+   "rank": "F",
+   "name": "Battle Instinct",
+   "type": "Basic",
+   "effects": "Critical Rate +10%. Critical Damage +25%.",
+   "mods": {
+    "critRate": 0.1,
+    "critDamage": 0.25
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Damage +20%. Critical Damage +15%.",
+    "active": 10,
+    "cooldown": 45,
+    "mods": {
+     "damage": 0.2,
+     "critDamage": 0.15
+    }
+   }
+  },
+  {
+   "id": "marker",
+   "rank": "F",
+   "name": "Marker",
+   "type": "Basic",
+   "effects": "Critical Rate +5%. Damage +10%. Focus Speed +5%.",
+   "mods": {
+    "critRate": 0.05,
+    "damage": 0.1,
+    "focusSpeed": 0.05
+   },
+   "skill": {
+    "kind": "mark",
+    "text": "Marks single target. Damage +25%. Critical Rate +25%.",
+    "active": 0,
+    "cooldown": 30,
+    "damage": 0.25,
+    "critRate": 0.25
+   }
+  },
+  {
+   "id": "lightweight",
+   "rank": "F",
+   "name": "Lightweight",
+   "type": "Basic",
+   "effects": "Stamina Consumption -10%. Movement Speed +10%.",
+   "mods": {
+    "staminaCost": -0.1,
+    "moveSpeed": 0.1
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Movement Speed +25%.",
+    "active": 15,
+    "cooldown": 45,
+    "mods": {
+     "moveSpeed": 0.25
+    }
+   }
+  },
+  {
+   "id": "fast_recovery",
+   "rank": "F",
+   "name": "Fast Recovery",
+   "type": "Basic",
+   "effects": "Max Health +20%.",
+   "mods": {
+    "maxHealth": 0.2
+   },
+   "skill": {
+    "kind": "heal",
+    "text": "Current Health +25%.",
+    "active": 0,
+    "cooldown": 90,
+    "pct": 0.25
+   }
+  },
+  {
+   "id": "quick_learner",
+   "rank": "F",
+   "name": "Quick Learner",
+   "type": "Basic",
+   "effects": "Experience Rate +25%.",
+   "mods": {
+    "expRate": 0.25
+   },
+   "skill": null
+  },
+  {
+   "id": "mana_reserve",
+   "rank": "F",
+   "name": "Mana Reserve",
+   "type": "Magic",
+   "effects": "Max Mana +20%.",
+   "mods": {
+    "maxMana": 0.2
+   },
+   "skill": {
+    "kind": "mana",
+    "text": "Current Mana +25%.",
+    "active": 0,
+    "cooldown": 90,
+    "pct": 0.25
+   }
+  },
+  {
+   "id": "regression",
+   "rank": "F",
+   "name": "Regression",
+   "type": "Secret",
+   "effects": "???",
+   "mods": {},
+   "skill": null,
+   "secret": true
+  },
+  {
+   "id": "glutton",
+   "rank": "F",
+   "name": "Glutton",
+   "type": "Secret",
+   "effects": "???",
+   "mods": {},
+   "skill": null,
+   "secret": true
+  },
+  {
+   "id": "strong_endurance",
+   "rank": "E",
+   "name": "Strong Endurance",
+   "type": "Melee",
+   "effects": "Max Stamina +25%. Stamina consumption -15%.",
+   "mods": {
+    "maxStamina": 0.25,
+    "staminaCost": -0.15
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Stamina Consumption -50%.",
+    "active": 20,
+    "cooldown": 60,
+    "mods": {
+     "staminaCost": -0.5
+    }
+   }
+  },
+  {
+   "id": "predators_eye",
+   "rank": "E",
+   "name": "Predator's Eye",
+   "type": "Ranger",
+   "effects": "Critical Rate +15%. Damage +5%. Focus Speed +5%.",
+   "mods": {
+    "critRate": 0.15,
+    "damage": 0.05,
+    "focusSpeed": 0.05
+   },
+   "skill": {
+    "kind": "predator",
+    "text": "Deal +10% damage to Focused Enemy below 50% HP.",
+    "active": 15,
+    "cooldown": 30,
+    "bonus": 0.1,
+    "below": 0.5
+   }
+  },
+  {
+   "id": "focused_mind",
+   "rank": "E",
+   "name": "Focused Mind",
+   "type": "Magic",
+   "effects": "Mana regeneration +15%. Max Mana +25%.",
+   "mods": {
+    "manaRegen": 0.15,
+    "maxMana": 0.25
+   },
+   "skill": {
+    "kind": "cdcut",
+    "text": "Skills cooldowns -10%.",
+    "active": 0,
+    "cooldown": 60,
+    "pct": 0.1
+   }
+  },
+  {
+   "id": "iron_will",
+   "rank": "E",
+   "name": "Iron Will",
+   "type": "Basic",
+   "effects": "Defense +20%.",
+   "mods": {
+    "defense": 0.2
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Defense +75%. Movement Speed -80%.",
+    "active": 5,
+    "cooldown": 45,
+    "mods": {
+     "defense": 0.75,
+     "moveSpeed": -0.8
+    }
+   }
+  },
+  {
+   "id": "berserkers_fury",
+   "rank": "D",
+   "name": "Berserker's Fury",
+   "type": "Melee",
+   "effects": "Damage +15%.",
+   "mods": {
+    "damage": 0.15
+   },
+   "skill": {
+    "kind": "berserk",
+    "text": "Berserk Mode: Damage +15%. Defense +10%. Movement Speed +10%.",
+    "active": 15,
+    "cooldown": 120,
+    "mods": {
+     "damage": 0.15,
+     "defense": 0.1,
+     "moveSpeed": 0.1
+    }
+   }
+  },
+  {
+   "id": "focus_shot",
+   "rank": "D",
+   "name": "Focus Shot",
+   "type": "Ranger",
+   "effects": "Focus Speed +15%.",
+   "mods": {
+    "focusSpeed": 0.15
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Range Damage +15%. Focus Speed +15%.",
+    "active": 5,
+    "cooldown": 120,
+    "mods": {
+     "rangeDamage": 0.15,
+     "focusSpeed": 0.15
+    }
+   }
+  },
+  {
+   "id": "mana_surge",
+   "rank": "D",
+   "name": "Mana Surge",
+   "type": "Magic",
+   "effects": "Max Mana +30%. Mana regeneration +25%.",
+   "mods": {
+    "maxMana": 0.3,
+    "manaRegen": 0.25
+   },
+   "skill": {
+    "kind": "mana",
+    "text": "Current Mana +40%.",
+    "active": 0,
+    "cooldown": 120,
+    "pct": 0.4
+   }
+  },
+  {
+   "id": "second_wind",
+   "rank": "D",
+   "name": "Second Wind",
+   "type": "Basic",
+   "effects": "Max Health +15%. Defense +10%.",
+   "mods": {
+    "maxHealth": 0.15,
+    "defense": 0.1
+   },
+   "skill": {
+    "kind": "secondwind",
+    "text": "If Health is less than 20%, then Current Health +25%.",
+    "active": 0,
+    "cooldown": 90,
+    "threshold": 0.2,
+    "pct": 0.25
+   }
+  },
+  {
+   "id": "bloodlust",
+   "rank": "C",
+   "name": "Bloodlust",
+   "type": "Melee",
+   "effects": "Melee Damage +15%.",
+   "mods": {
+    "meleeDamage": 0.15
+   },
+   "skill": {
+    "kind": "bloodlust",
+    "text": "Gain +10% damage after defeating an enemy (5 Stacks).",
+    "active": 30,
+    "cooldown": 120,
+    "perKill": 0.1,
+    "maxStacks": 5
+   }
+  },
+  {
+   "id": "keen_senses",
+   "rank": "C",
+   "name": "Keen Senses",
+   "type": "Ranger",
+   "effects": "Critical Rate +25%. Focus Speed +10%.",
+   "mods": {
+    "critRate": 0.25,
+    "focusSpeed": 0.1
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Range Damage +20%. Focus Speed +20%.",
+    "active": 5,
+    "cooldown": 90,
+    "mods": {
+     "rangeDamage": 0.2,
+     "focusSpeed": 0.2
+    }
+   }
+  },
+  {
+   "id": "false_predation",
+   "rank": "C",
+   "name": "False Predation",
+   "type": "Magic",
+   "effects": "Damage +10%. Max Mana +20%. Mana regeneration +10%. Magic Damage +10%.",
+   "mods": {
+    "damage": 0.1,
+    "maxMana": 0.2,
+    "manaRegen": 0.1,
+    "magicDamage": 0.1
+   },
+   "skill": {
+    "kind": "lifesteal",
+    "text": "Steal 1% of enemy's health per hit.",
+    "active": 30,
+    "cooldown": 300,
+    "pct": 0.01
+   }
+  },
+  {
+   "id": "guardians_door",
+   "rank": "C",
+   "name": "Guardian's Door",
+   "type": "Basic",
+   "effects": "Max Health +25%.",
+   "mods": {
+    "maxHealth": 0.25
+   },
+   "skill": {
+    "kind": "shield",
+    "text": "Gain a shield equal to 15% of max HP.",
+    "active": 60,
+    "cooldown": 90,
+    "pct": 0.15
+   }
+  },
+  {
+   "id": "berserkers_wrath",
+   "rank": "B",
+   "name": "Berserker's Wrath",
+   "type": "Melee",
+   "effects": "Damage +25%.",
+   "mods": {
+    "damage": 0.25
+   },
+   "skill": {
+    "kind": "berserk",
+    "text": "Berserk Mode: Damage +30%. Defense +25%. Movement Speed +20%. Critical Damage +25%.",
+    "active": 20,
+    "cooldown": 150,
+    "mods": {
+     "damage": 0.3,
+     "defense": 0.25,
+     "moveSpeed": 0.2,
+     "critDamage": 0.25
+    }
+   }
+  },
+  {
+   "id": "eagle_eye",
+   "rank": "B",
+   "name": "Eagle Eye",
+   "type": "Ranger",
+   "effects": "Range Damage +10%. Focus Speed +20%.",
+   "mods": {
+    "rangeDamage": 0.1,
+    "focusSpeed": 0.2
+   },
+   "skill": {
+    "kind": "buff",
+    "text": "Critical Rate +50%. Critical Damage +50%. Focus Speed +15%.",
+    "active": 7,
+    "cooldown": 60,
+    "mods": {
+     "critRate": 0.5,
+     "critDamage": 0.5,
+     "focusSpeed": 0.15
+    }
+   }
+  },
+  {
+   "id": "arcane_affinity",
+   "rank": "B",
+   "name": "Arcane Affinity",
+   "type": "Magic",
+   "effects": "Magic damage +20%. Mana cost -10%.",
+   "mods": {
+    "magicDamage": 0.2,
+    "manaCost": -0.1
+   },
+   "skill": null
+  },
+  {
+   "id": "lucky_constellation",
+   "rank": "B",
+   "name": "Lucky Constellation",
+   "type": "Basic",
+   "effects": "Higher Rate to find rare loot and bonus rewards.",
+   "mods": {
+    "lootLuck": 0.15
+   },
+   "skill": null
+  },
+  {
+   "id": "blood_fangs",
+   "rank": "A",
+   "name": "Blood Fangs",
+   "type": "Melee",
+   "effects": "Damage +10%. Critical Damage +25%.",
+   "mods": {
+    "damage": 0.1,
+    "critDamage": 0.25
+   },
+   "skill": null
+  },
+  {
+   "id": "rangers_aim",
+   "rank": "A",
+   "name": "Ranger's Aim",
+   "type": "Ranger",
+   "effects": "Critical Rate +25%. Range Damage +15%. Focus Speed +25%.",
+   "mods": {
+    "critRate": 0.25,
+    "rangeDamage": 0.15,
+    "focusSpeed": 0.25
+   },
+   "skill": null
+  },
+  {
+   "id": "fake_mana_heart",
+   "rank": "A",
+   "name": "Fake Mana Heart",
+   "type": "Magic",
+   "effects": "Max Mana +40%.",
+   "mods": {
+    "maxMana": 0.4
+   },
+   "skill": null
+  },
+  {
+   "id": "adaptive_growth",
+   "rank": "A",
+   "name": "Adaptive Growth",
+   "type": "Basic",
+   "effects": "Gain +10% to a random stat whenever you level up.",
+   "mods": {},
+   "onLevelUp": "adaptive",
+   "skill": null
+  },
+  {
+   "id": "warriors_rage",
+   "rank": "S",
+   "name": "Warrior's Rage",
+   "type": "Melee",
+   "effects": "Melee Damage +40%.",
+   "mods": {
+    "meleeDamage": 0.4
+   },
+   "skill": null
+  },
+  {
+   "id": "precision_aim",
+   "rank": "S",
+   "name": "Precision Aim",
+   "type": "Ranger",
+   "effects": "Critical Rate +40%. Critical Damage +50%. Range Damage +25%. Focus Speed +30%.",
+   "mods": {
+    "critRate": 0.4,
+    "critDamage": 0.5,
+    "rangeDamage": 0.25,
+    "focusSpeed": 0.3
+   },
+   "skill": null
+  },
+  {
+   "id": "geminis_blessing",
+   "rank": "S",
+   "name": "Gemini's Blessing",
+   "type": "Magic",
+   "effects": "Max Mana +50%. Mana regeneration +20%.",
+   "mods": {
+    "maxMana": 0.5,
+    "manaRegen": 0.2
+   },
+   "skill": null
+  },
+  {
+   "id": "weapon_prodigy",
+   "rank": "S",
+   "name": "Weapon Prodigy",
+   "type": "Basic",
+   "effects": "Weapon Mastery experience gained +50%.",
+   "mods": {
+    "weaponMastery": 0.5
+   },
+   "skill": null
+  }
+ ]
+}

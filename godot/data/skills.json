@@ -1,0 +1,315 @@
+{
+ "SKILLS": [
+  {
+   "id": "iron_body",
+   "name": "Iron Body",
+   "rank": "F",
+   "type": "Basic",
+   "skill": {
+    "kind": "buff",
+    "text": "Damage Reduction 10%.",
+    "active": 25,
+    "cooldown": 40,
+    "mods": {
+     "damageReduction": 0.1
+    }
+   }
+  },
+  {
+   "id": "swift_wind",
+   "name": "Swift Wind",
+   "rank": "F",
+   "type": "Basic",
+   "skill": {
+    "kind": "buff",
+    "text": "Max Stamina +25%. Stamina consumption -10%.",
+    "active": 20,
+    "cooldown": 30,
+    "mods": {
+     "maxStamina": 0.25,
+     "staminaCost": -0.1
+    }
+   }
+  },
+  {
+   "id": "battle_instinct",
+   "name": "Battle Instinct",
+   "rank": "F",
+   "type": "Basic",
+   "skill": {
+    "kind": "buff",
+    "text": "Damage +20%. Critical Damage +15%.",
+    "active": 10,
+    "cooldown": 45,
+    "mods": {
+     "damage": 0.2,
+     "critDamage": 0.15
+    }
+   }
+  },
+  {
+   "id": "marker",
+   "name": "Marker",
+   "rank": "F",
+   "type": "Basic",
+   "skill": {
+    "kind": "mark",
+    "text": "Marks single target. Damage +25%. Critical Rate +25%.",
+    "active": 0,
+    "cooldown": 30,
+    "damage": 0.25,
+    "critRate": 0.25
+   }
+  },
+  {
+   "id": "lightweight",
+   "name": "Lightweight",
+   "rank": "F",
+   "type": "Basic",
+   "skill": {
+    "kind": "buff",
+    "text": "Movement Speed +25%.",
+    "active": 15,
+    "cooldown": 45,
+    "mods": {
+     "moveSpeed": 0.25
+    }
+   }
+  },
+  {
+   "id": "fast_recovery",
+   "name": "Fast Recovery",
+   "rank": "F",
+   "type": "Basic",
+   "skill": {
+    "kind": "heal",
+    "text": "Current Health +25%.",
+    "active": 0,
+    "cooldown": 90,
+    "pct": 0.25
+   }
+  },
+  {
+   "id": "mana_reserve",
+   "name": "Mana Reserve",
+   "rank": "F",
+   "type": "Magic",
+   "skill": {
+    "kind": "mana",
+    "text": "Current Mana +25%.",
+    "active": 0,
+    "cooldown": 90,
+    "pct": 0.25
+   }
+  },
+  {
+   "id": "strong_endurance",
+   "name": "Strong Endurance",
+   "rank": "E",
+   "type": "Melee",
+   "skill": {
+    "kind": "buff",
+    "text": "Stamina Consumption -50%.",
+    "active": 20,
+    "cooldown": 60,
+    "mods": {
+     "staminaCost": -0.5
+    }
+   }
+  },
+  {
+   "id": "predators_eye",
+   "name": "Predator's Eye",
+   "rank": "E",
+   "type": "Ranger",
+   "skill": {
+    "kind": "predator",
+    "text": "Deal +10% damage to Focused Enemy below 50% HP.",
+    "active": 15,
+    "cooldown": 30,
+    "bonus": 0.1,
+    "below": 0.5
+   }
+  },
+  {
+   "id": "focused_mind",
+   "name": "Focused Mind",
+   "rank": "E",
+   "type": "Magic",
+   "skill": {
+    "kind": "cdcut",
+    "text": "Skills cooldowns -10%.",
+    "active": 0,
+    "cooldown": 60,
+    "pct": 0.1
+   }
+  },
+  {
+   "id": "iron_will",
+   "name": "Iron Will",
+   "rank": "E",
+   "type": "Basic",
+   "skill": {
+    "kind": "buff",
+    "text": "Defense +75%. Movement Speed -80%.",
+    "active": 5,
+    "cooldown": 45,
+    "mods": {
+     "defense": 0.75,
+     "moveSpeed": -0.8
+    }
+   }
+  },
+  {
+   "id": "berserkers_fury",
+   "name": "Berserker's Fury",
+   "rank": "D",
+   "type": "Melee",
+   "skill": {
+    "kind": "berserk",
+    "text": "Berserk Mode: Damage +15%. Defense +10%. Movement Speed +10%.",
+    "active": 15,
+    "cooldown": 120,
+    "mods": {
+     "damage": 0.15,
+     "defense": 0.1,
+     "moveSpeed": 0.1
+    }
+   }
+  },
+  {
+   "id": "focus_shot",
+   "name": "Focus Shot",
+   "rank": "D",
+   "type": "Ranger",
+   "skill": {
+    "kind": "buff",
+    "text": "Range Damage +15%. Focus Speed +15%.",
+    "active": 5,
+    "cooldown": 120,
+    "mods": {
+     "rangeDamage": 0.15,
+     "focusSpeed": 0.15
+    }
+   }
+  },
+  {
+   "id": "mana_surge",
+   "name": "Mana Surge",
+   "rank": "D",
+   "type": "Magic",
+   "skill": {
+    "kind": "mana",
+    "text": "Current Mana +40%.",
+    "active": 0,
+    "cooldown": 120,
+    "pct": 0.4
+   }
+  },
+  {
+   "id": "second_wind",
+   "name": "Second Wind",
+   "rank": "D",
+   "type": "Basic",
+   "skill": {
+    "kind": "secondwind",
+    "text": "If Health is less than 20%, then Current Health +25%.",
+    "active": 0,
+    "cooldown": 90,
+    "threshold": 0.2,
+    "pct": 0.25
+   }
+  },
+  {
+   "id": "bloodlust",
+   "name": "Bloodlust",
+   "rank": "C",
+   "type": "Melee",
+   "skill": {
+    "kind": "bloodlust",
+    "text": "Gain +10% damage after defeating an enemy (5 Stacks).",
+    "active": 30,
+    "cooldown": 120,
+    "perKill": 0.1,
+    "maxStacks": 5
+   }
+  },
+  {
+   "id": "keen_senses",
+   "name": "Keen Senses",
+   "rank": "C",
+   "type": "Ranger",
+   "skill": {
+    "kind": "buff",
+    "text": "Range Damage +20%. Focus Speed +20%.",
+    "active": 5,
+    "cooldown": 90,
+    "mods": {
+     "rangeDamage": 0.2,
+     "focusSpeed": 0.2
+    }
+   }
+  },
+  {
+   "id": "false_predation",
+   "name": "False Predation",
+   "rank": "C",
+   "type": "Magic",
+   "skill": {
+    "kind": "lifesteal",
+    "text": "Steal 1% of enemy's health per hit.",
+    "active": 30,
+    "cooldown": 300,
+    "pct": 0.01
+   }
+  },
+  {
+   "id": "guardians_door",
+   "name": "Guardian's Door",
+   "rank": "C",
+   "type": "Basic",
+   "skill": {
+    "kind": "shield",
+    "text": "Gain a shield equal to 15% of max HP.",
+    "active": 60,
+    "cooldown": 90,
+    "pct": 0.15
+   }
+  },
+  {
+   "id": "berserkers_wrath",
+   "name": "Berserker's Wrath",
+   "rank": "B",
+   "type": "Melee",
+   "skill": {
+    "kind": "berserk",
+    "text": "Berserk Mode: Damage +30%. Defense +25%. Movement Speed +20%. Critical Damage +25%.",
+    "active": 20,
+    "cooldown": 150,
+    "mods": {
+     "damage": 0.3,
+     "defense": 0.25,
+     "moveSpeed": 0.2,
+     "critDamage": 0.25
+    }
+   }
+  },
+  {
+   "id": "eagle_eye",
+   "name": "Eagle Eye",
+   "rank": "B",
+   "type": "Ranger",
+   "skill": {
+    "kind": "buff",
+    "text": "Critical Rate +50%. Critical Damage +50%. Focus Speed +15%.",
+    "active": 7,
+    "cooldown": 60,
+    "mods": {
+     "critRate": 0.5,
+     "critDamage": 0.5,
+     "focusSpeed": 0.15
+    }
+   }
+  }
+ ]
+}
