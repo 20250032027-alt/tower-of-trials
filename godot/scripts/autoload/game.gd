@@ -182,7 +182,7 @@ func apply_tuning() -> void:
 	weapons.basic_crossbow.cooldown = t("crossbowSec")
 	weapons.m4.cooldown = t("m4Sec")
 
-# ------------------------------------------------------------------ sound (the Sound autoload comes with the audio stage; until then these do nothing)
+# ------------------------------------------------------------------ sound (forwarded to the Sound autoload)
 func sfx(sound_name: String, opts: Dictionary = {}) -> void:
 	var s := get_node_or_null("/root/Sound")
 	if s != null:
@@ -192,6 +192,32 @@ func start_music(track: String, fade: float = 1.8) -> void:
 	var s := get_node_or_null("/root/Sound")
 	if s != null:
 		s.play_music(track, fade)
+
+func stop_music(fade: float = 1.2) -> void:
+	var s := get_node_or_null("/root/Sound")
+	if s != null:
+		s.stop_music(fade)
+
+func stinger(stinger_name: String) -> void:
+	var s := get_node_or_null("/root/Sound")
+	if s != null:
+		s.stinger(stinger_name)
+
+## combat intensity for the music (0 exploring, 1 hunted, 2 fighting)
+func threat(level: int) -> void:
+	var s := get_node_or_null("/root/Sound")
+	if s != null:
+		s.threat(level)
+
+func reset_threat() -> void:
+	var s := get_node_or_null("/root/Sound")
+	if s != null:
+		s.reset_threat()
+
+func muffle(on: bool) -> void:
+	var s := get_node_or_null("/root/Sound")
+	if s != null:
+		s.muffle(on)
 
 func apply_audio() -> void:
 	var s := get_node_or_null("/root/Sound")

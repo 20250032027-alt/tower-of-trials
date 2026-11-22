@@ -45,6 +45,7 @@ var hit_t := 0.0
 var hit_a := 0.0
 var strafe_t := 0.0
 var strafe_dir := 1.0
+var step_t := 0.0
 var tt := 0.0
 var walk_ph := 0.0
 var last_hit_angle := 0.0
@@ -123,6 +124,7 @@ func notice() -> void:
 	alert = 1.0
 	lost_t = 0.0
 	cue_kind = "alert"
+	Game.sfx("notice", {"at": global_position})
 	cue_t = 0.9
 	world.alert_allies(self)
 
@@ -211,6 +213,7 @@ func _physics_process(dt: float) -> void:
 					if in_sight and cooldown <= 0.0:
 						state = "windup"
 						timer = float(def.windup)
+						Game.sfx("magewind" if def.style == "staff" else "windup", {"at": global_position})
 					else:
 						strafe_t -= dt
 						if strafe_t <= 0.0:
@@ -227,6 +230,7 @@ func _physics_process(dt: float) -> void:
 					if dist < float(def.attackRange) - 3.0 and cooldown <= 0.0:
 						state = "windup"
 						timer = float(def.windup)
+						Game.sfx("windup", {"at": global_position})
 					elif dist > float(def.attackRange) - 6.0:
 						v = Vector2.from_angle(to_player) * spd_move
 			"search":
@@ -266,6 +270,11 @@ func _physics_process(dt: float) -> void:
 	velocity = v
 	move_and_slide()
 	var sp := v.length()
+	if state == "chase" and sp > 1.0:   # you can hear them coming: soft bone clatter, louder when close
+		step_t -= dt
+		if step_t <= 0.0:
+			step_t = 0.3
+			Game.sfx("erattle", {"at": global_position})
 	tt += dt
 	if sp > 12.0:
 		walk_ph += sp * dt / 9.0
@@ -277,9 +286,12 @@ func _physics_process(dt: float) -> void:
 func _strike(player) -> void:
 	var reach := float(def.attackRange) + 8.0
 	swing = 1.0
+	Game.sfx("eswing", {"at": global_position})
 	lunge = Vector2.from_angle(angle) * 80.0
 	world.slash_fx(global_position, angle, reach, 1.0, "thrust" if def.style == "spear" else ("large" if def.style == "heavy" else "small"), Color("ff8a5a"))
 	if def.style == "heavy":
+		world.shockwave(global_position + Vector2.from_angle(angle) * reach * 0.75, Color("cfc8b0"), 0.45)
+		Game.sfx("slam", {"at": global_position})
 		var pd: float = player.global_position.distance_to(global_position)
 		if pd < 170.0:
 			world.shake(4.0 * (1.15 - pd / 200.0), 0.11)
@@ -302,6 +314,7 @@ func _fire(player) -> void:
 	proj.life = 2.4
 	swing = 1.0
 	world.muzzle_flash(global_position + Vector2.from_angle(a) * 8.0, a)
+	Game.sfx("cast" if def.style == "staff" else "shoot", {"weapon": "training_mage_book" if def.style == "staff" else "training_bow", "at": global_position})
 
 func hurt(damage: float, crit: bool, from_pos: Vector2, knock_force: float, info: Dictionary) -> float:
 	if not alive:
@@ -324,6 +337,7 @@ func hurt(damage: float, crit: bool, from_pos: Vector2, knock_force: float, info
 			timer = 0.4
 	world.float_text(global_position + Vector2(randf_range(-4, 4), -10), str(roundi(dealt)), Color("ffd84a") if crit else Color.WHITE, 1.5 if crit else 1.0)
 	last_hit_angle = hit_a
+	Game.sfx("hit", {"weapon": info.get("weapon"), "mat": "bone", "crit": crit, "at": global_position})
 	world.hit_fx(global_position, hit_a, crit)
 	if hp <= 0.0:
 		_die(crit)
@@ -333,6 +347,7 @@ func _die(crit: bool) -> void:
 	if not alive:
 		return
 	alive = false
+	Game.sfx("kill", {"at": global_position})
 	world.death_fx(global_position, last_hit_angle, crit)
 	world.on_enemy_killed(self)
 	queue_free()

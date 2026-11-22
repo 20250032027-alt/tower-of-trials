@@ -1,0 +1,479 @@
+{
+ "sfx": {
+  "swing:training_sword": [
+   "swing_training_sword_0.ogg",
+   "swing_training_sword_1.ogg",
+   "swing_training_sword_2.ogg"
+  ],
+  "swing:training_claymore": [
+   "swing_training_claymore_0.ogg",
+   "swing_training_claymore_1.ogg",
+   "swing_training_claymore_2.ogg"
+  ],
+  "swing:training_spear": [
+   "swing_training_spear_0.ogg",
+   "swing_training_spear_1.ogg",
+   "swing_training_spear_2.ogg"
+  ],
+  "hit:training_sword:bone": [
+   "hit_training_sword_bone_0.ogg",
+   "hit_training_sword_bone_1.ogg"
+  ],
+  "crit:training_sword:bone": [
+   "crit_training_sword_bone_0.ogg",
+   "crit_training_sword_bone_1.ogg"
+  ],
+  "hit:training_sword:wood": [
+   "hit_training_sword_wood_0.ogg",
+   "hit_training_sword_wood_1.ogg"
+  ],
+  "crit:training_sword:wood": [
+   "crit_training_sword_wood_0.ogg",
+   "crit_training_sword_wood_1.ogg"
+  ],
+  "hit:training_claymore:bone": [
+   "hit_training_claymore_bone_0.ogg",
+   "hit_training_claymore_bone_1.ogg"
+  ],
+  "crit:training_claymore:bone": [
+   "crit_training_claymore_bone_0.ogg",
+   "crit_training_claymore_bone_1.ogg"
+  ],
+  "hit:training_claymore:wood": [
+   "hit_training_claymore_wood_0.ogg",
+   "hit_training_claymore_wood_1.ogg"
+  ],
+  "crit:training_claymore:wood": [
+   "crit_training_claymore_wood_0.ogg",
+   "crit_training_claymore_wood_1.ogg"
+  ],
+  "hit:training_spear:bone": [
+   "hit_training_spear_bone_0.ogg",
+   "hit_training_spear_bone_1.ogg"
+  ],
+  "crit:training_spear:bone": [
+   "crit_training_spear_bone_0.ogg",
+   "crit_training_spear_bone_1.ogg"
+  ],
+  "hit:training_spear:wood": [
+   "hit_training_spear_wood_0.ogg",
+   "hit_training_spear_wood_1.ogg"
+  ],
+  "crit:training_spear:wood": [
+   "crit_training_spear_wood_0.ogg",
+   "crit_training_spear_wood_1.ogg"
+  ],
+  "hit:training_bow:bone": [
+   "hit_training_bow_bone_0.ogg",
+   "hit_training_bow_bone_1.ogg"
+  ],
+  "crit:training_bow:bone": [
+   "crit_training_bow_bone_0.ogg",
+   "crit_training_bow_bone_1.ogg"
+  ],
+  "hit:training_bow:wood": [
+   "hit_training_bow_wood_0.ogg",
+   "hit_training_bow_wood_1.ogg"
+  ],
+  "crit:training_bow:wood": [
+   "crit_training_bow_wood_0.ogg",
+   "crit_training_bow_wood_1.ogg"
+  ],
+  "hit:basic_crossbow:bone": [
+   "hit_basic_crossbow_bone_0.ogg",
+   "hit_basic_crossbow_bone_1.ogg"
+  ],
+  "crit:basic_crossbow:bone": [
+   "crit_basic_crossbow_bone_0.ogg",
+   "crit_basic_crossbow_bone_1.ogg"
+  ],
+  "hit:basic_crossbow:wood": [
+   "hit_basic_crossbow_wood_0.ogg",
+   "hit_basic_crossbow_wood_1.ogg"
+  ],
+  "crit:basic_crossbow:wood": [
+   "crit_basic_crossbow_wood_0.ogg",
+   "crit_basic_crossbow_wood_1.ogg"
+  ],
+  "hit:one_time_pistol:bone": [
+   "hit_one_time_pistol_bone_0.ogg",
+   "hit_one_time_pistol_bone_1.ogg"
+  ],
+  "crit:one_time_pistol:bone": [
+   "crit_one_time_pistol_bone_0.ogg",
+   "crit_one_time_pistol_bone_1.ogg"
+  ],
+  "hit:one_time_pistol:wood": [
+   "hit_one_time_pistol_wood_0.ogg",
+   "hit_one_time_pistol_wood_1.ogg"
+  ],
+  "crit:one_time_pistol:wood": [
+   "crit_one_time_pistol_wood_0.ogg",
+   "crit_one_time_pistol_wood_1.ogg"
+  ],
+  "hit:m4:bone": [
+   "hit_m4_bone_0.ogg",
+   "hit_m4_bone_1.ogg"
+  ],
+  "crit:m4:bone": [
+   "crit_m4_bone_0.ogg",
+   "crit_m4_bone_1.ogg"
+  ],
+  "hit:m4:wood": [
+   "hit_m4_wood_0.ogg",
+   "hit_m4_wood_1.ogg"
+  ],
+  "crit:m4:wood": [
+   "crit_m4_wood_0.ogg",
+   "crit_m4_wood_1.ogg"
+  ],
+  "hit:training_mage_book:bone": [
+   "hit_training_mage_book_bone_0.ogg",
+   "hit_training_mage_book_bone_1.ogg"
+  ],
+  "crit:training_mage_book:bone": [
+   "crit_training_mage_book_bone_0.ogg",
+   "crit_training_mage_book_bone_1.ogg"
+  ],
+  "hit:training_mage_book:wood": [
+   "hit_training_mage_book_wood_0.ogg",
+   "hit_training_mage_book_wood_1.ogg"
+  ],
+  "crit:training_mage_book:wood": [
+   "crit_training_mage_book_wood_0.ogg",
+   "crit_training_mage_book_wood_1.ogg"
+  ],
+  "hit:training_staff:bone": [
+   "hit_training_staff_bone_0.ogg",
+   "hit_training_staff_bone_1.ogg"
+  ],
+  "crit:training_staff:bone": [
+   "crit_training_staff_bone_0.ogg",
+   "crit_training_staff_bone_1.ogg"
+  ],
+  "hit:training_staff:wood": [
+   "hit_training_staff_wood_0.ogg",
+   "hit_training_staff_wood_1.ogg"
+  ],
+  "crit:training_staff:wood": [
+   "crit_training_staff_wood_0.ogg",
+   "crit_training_staff_wood_1.ogg"
+  ],
+  "shoot:training_bow:0": [
+   "shoot_training_bow_0_0.ogg",
+   "shoot_training_bow_0_1.ogg"
+  ],
+  "shoot:training_bow:1": [
+   "shoot_training_bow_1_0.ogg",
+   "shoot_training_bow_1_1.ogg"
+  ],
+  "shoot:training_bow:2": [
+   "shoot_training_bow_2_0.ogg",
+   "shoot_training_bow_2_1.ogg"
+  ],
+  "shoot:basic_crossbow": [
+   "shoot_basic_crossbow_0.ogg",
+   "shoot_basic_crossbow_1.ogg"
+  ],
+  "shoot:one_time_pistol": [
+   "shoot_one_time_pistol_0.ogg",
+   "shoot_one_time_pistol_1.ogg"
+  ],
+  "shoot:m4": [
+   "shoot_m4_0.ogg",
+   "shoot_m4_1.ogg"
+  ],
+  "magic:training_mage_book": [
+   "magic_training_mage_book_0.ogg",
+   "magic_training_mage_book_1.ogg"
+  ],
+  "cast:training_mage_book": [
+   "cast_training_mage_book_0.ogg",
+   "cast_training_mage_book_1.ogg"
+  ],
+  "magic:training_staff": [
+   "magic_training_staff_0.ogg",
+   "magic_training_staff_1.ogg"
+  ],
+  "cast:training_staff": [
+   "cast_training_staff_0.ogg",
+   "cast_training_staff_1.ogg"
+  ],
+  "xp:0": [
+   "xp_0_0.ogg"
+  ],
+  "xp:1": [
+   "xp_1_0.ogg"
+  ],
+  "xp:2": [
+   "xp_2_0.ogg"
+  ],
+  "xp:3": [
+   "xp_3_0.ogg"
+  ],
+  "xp:4": [
+   "xp_4_0.ogg"
+  ],
+  "xp:5": [
+   "xp_5_0.ogg"
+  ],
+  "xp:6": [
+   "xp_6_0.ogg"
+  ],
+  "xp:7": [
+   "xp_7_0.ogg"
+  ],
+  "xp:8": [
+   "xp_8_0.ogg"
+  ],
+  "tick:up": [
+   "tick_up_0.ogg",
+   "tick_up_1.ogg"
+  ],
+  "tick:down": [
+   "tick_down_0.ogg",
+   "tick_down_1.ogg"
+  ],
+  "ui": [
+   "ui_0.ogg",
+   "ui_1.ogg",
+   "ui_2.ogg"
+  ],
+  "heavy": [
+   "heavy_0.ogg",
+   "heavy_1.ogg"
+  ],
+  "draw": [
+   "draw_0.ogg",
+   "draw_1.ogg"
+  ],
+  "charged": [
+   "charged_0.ogg",
+   "charged_1.ogg"
+  ],
+  "reload": [
+   "reload_0.ogg",
+   "reload_1.ogg"
+  ],
+  "hurt": [
+   "hurt_0.ogg",
+   "hurt_1.ogg",
+   "hurt_2.ogg"
+  ],
+  "dodge": [
+   "dodge_0.ogg",
+   "dodge_1.ogg",
+   "dodge_2.ogg"
+  ],
+  "kill": [
+   "kill_0.ogg",
+   "kill_1.ogg",
+   "kill_2.ogg"
+  ],
+  "eswing": [
+   "eswing_0.ogg",
+   "eswing_1.ogg",
+   "eswing_2.ogg"
+  ],
+  "windup": [
+   "windup_0.ogg",
+   "windup_1.ogg"
+  ],
+  "erattle": [
+   "erattle_0.ogg",
+   "erattle_1.ogg",
+   "erattle_2.ogg"
+  ],
+  "notice": [
+   "notice_0.ogg",
+   "notice_1.ogg",
+   "notice_2.ogg"
+  ],
+  "step": [
+   "step_0.ogg",
+   "step_1.ogg",
+   "step_2.ogg"
+  ],
+  "heartbeat": [
+   "heartbeat_0.ogg",
+   "heartbeat_1.ogg"
+  ],
+  "pickup": [
+   "pickup_0.ogg",
+   "pickup_1.ogg"
+  ],
+  "levelup": [
+   "levelup_0.ogg",
+   "levelup_1.ogg"
+  ],
+  "chest": [
+   "chest_0.ogg",
+   "chest_1.ogg"
+  ],
+  "rare": [
+   "rare_0.ogg",
+   "rare_1.ogg"
+  ],
+  "portal": [
+   "portal_0.ogg",
+   "portal_1.ogg"
+  ],
+  "skill": [
+   "skill_0.ogg",
+   "skill_1.ogg"
+  ],
+  "wheelopen": [
+   "wheelopen_0.ogg",
+   "wheelopen_1.ogg"
+  ],
+  "wheelclose": [
+   "wheelclose_0.ogg",
+   "wheelclose_1.ogg"
+  ],
+  "heal": [
+   "heal_0.ogg",
+   "heal_1.ogg"
+  ],
+  "manaup": [
+   "manaup_0.ogg",
+   "manaup_1.ogg"
+  ],
+  "buff": [
+   "buff_0.ogg",
+   "buff_1.ogg"
+  ],
+  "shieldup": [
+   "shieldup_0.ogg",
+   "shieldup_1.ogg"
+  ],
+  "shieldbreak": [
+   "shieldbreak_0.ogg",
+   "shieldbreak_1.ogg"
+  ],
+  "mark": [
+   "mark_0.ogg",
+   "mark_1.ogg"
+  ],
+  "ready": [
+   "ready_0.ogg",
+   "ready_1.ogg"
+  ],
+  "expire": [
+   "expire_0.ogg",
+   "expire_1.ogg"
+  ],
+  "dry": [
+   "dry_0.ogg",
+   "dry_1.ogg"
+  ],
+  "magout": [
+   "magout_0.ogg",
+   "magout_1.ogg"
+  ],
+  "lock": [
+   "lock_0.ogg",
+   "lock_1.ogg"
+  ],
+  "lockon": [
+   "lockon_0.ogg",
+   "lockon_1.ogg"
+  ],
+  "lockoff": [
+   "lockoff_0.ogg",
+   "lockoff_1.ogg"
+  ],
+  "slam": [
+   "slam_0.ogg",
+   "slam_1.ogg"
+  ],
+  "magewind": [
+   "magewind_0.ogg",
+   "magewind_1.ogg"
+  ],
+  "aurafade": [
+   "aurafade_0.ogg",
+   "aurafade_1.ogg"
+  ],
+  "overfocus": [
+   "overfocus_0.ogg",
+   "overfocus_1.ogg"
+  ],
+  "berserk": [
+   "berserk_0.ogg",
+   "berserk_1.ogg"
+  ],
+  "deny": [
+   "deny_0.ogg",
+   "deny_1.ogg"
+  ],
+  "crack": [
+   "crack_0.ogg",
+   "crack_1.ogg"
+  ],
+  "thunder": [
+   "thunder_0.ogg",
+   "thunder_1.ogg"
+  ],
+  "crumble": [
+   "crumble_0.ogg",
+   "crumble_1.ogg"
+  ]
+ },
+ "music": {
+  "title": {
+   "files": [
+    "title_0.ogg"
+   ],
+   "length": 28.235,
+   "bpm": 68,
+   "family": false
+  },
+  "hub": {
+   "files": [
+    "hub_0.ogg"
+   ],
+   "length": 22.326,
+   "bpm": 86,
+   "family": false
+  },
+  "dungeon": {
+   "files": [
+    "dungeon_0.ogg",
+    "dungeon_1.ogg",
+    "dungeon_2.ogg"
+   ],
+   "length": 30,
+   "bpm": 64,
+   "family": true
+  },
+  "vault": {
+   "files": [
+    "vault_0.ogg",
+    "vault_1.ogg",
+    "vault_2.ogg"
+   ],
+   "length": 32,
+   "bpm": 60,
+   "family": true
+  },
+  "rift": {
+   "files": [
+    "rift_0.ogg",
+    "rift_1.ogg",
+    "rift_2.ogg"
+   ],
+   "length": 34.286,
+   "bpm": 56,
+   "family": true
+  }
+ },
+ "stingers": {
+  "clear": "clear.ogg",
+  "start": "start.ogg",
+  "death": "death.ogg"
+ },
+ "meta": {
+  "sampleRate": 44100,
+  "note": "written by tools/godot/render_audio.mjs"
+ }
+}

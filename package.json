@@ -14,7 +14,8 @@
     "deploy": "npm run build && gh-pages -d dist -t",
     "single": "npm run build && node scripts/make-single.mjs",
     "godot:export": "node tools/godot/export.mjs",
-    "godot:test": "node tools/godot/test.mjs"
+    "godot:test": "node tools/godot/test.mjs",
+    "godot:audio": "node tools/godot/render_audio.mjs"
   },
   "dependencies": {
     "phaser": "3.90.0"

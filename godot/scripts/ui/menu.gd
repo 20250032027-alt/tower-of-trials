@@ -110,6 +110,7 @@ func open(start_tab: String = "") -> void:
 	if start_tab != "":
 		tab = start_tab
 	_circles_before = int(Game.profile.manaCircles)
+	Game.muffle(true)
 	root.visible = true
 	_focus_id = ""
 	render()
@@ -121,6 +122,7 @@ func close() -> void:
 		return
 	is_open = false
 	root.visible = false
+	Game.muffle(false)
 	Game.persist()
 	Game.save_settings()
 	world.menu_lock_until = Time.get_ticks_msec() + 300

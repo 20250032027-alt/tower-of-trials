@@ -268,6 +268,7 @@ func deny(msg: String) -> void:
 	if deny_t > 0.0:
 		return
 	deny_t = 0.8
+	Game.sfx("deny")
 	world.float_text(global_position + Vector2(0, -14), msg, Color("ff8a7a"))
 
 func heal(amount: float, quiet: bool = false) -> void:
@@ -335,7 +336,10 @@ func _physics_process(dt: float) -> void:
 	dodge_cd = maxf(0.0, dodge_cd - dt)
 	invuln = maxf(0.0, invuln - dt)
 	in_combat_t = maxf(0.0, in_combat_t - dt)
-	reload = maxf(0.0, reload - dt)
+	if reload > 0.0:
+		reload = maxf(0.0, reload - dt)
+		if reload == 0.0:
+			Game.sfx("reload")
 
 	if not Game.profile.flags.get("tutMoved", false) and global_position.distance_to(world.start_pos) > 24.0:
 		Game.profile.flags["tutMoved"] = true
@@ -350,6 +354,7 @@ func _physics_process(dt: float) -> void:
 		toggle_berserk()
 	if Input.is_action_just_pressed("lock_on"):
 		Game.settings.lock_on = not Game.settings.lock_on
+		Game.sfx("lockon" if Game.settings.lock_on else "lockoff")
 		world.toast("LOCK-ON: " + ("ON" if Game.settings.lock_on else "OFF"))
 	if Input.is_action_just_pressed("dodge") and not world.wheel_open:
 		dodge_buf = BUFFER_TIME
@@ -407,6 +412,7 @@ func _try_dodge(mv: Vector2) -> bool:
 		return false
 	stamina -= cost
 	dodge_cd = stats.dodgeCooldown
+	Game.sfx("dodge")
 	dodging = DODGE_TIME
 	invuln = DODGE_TIME + 0.08
 	if mv.length() > 0.1:
@@ -466,6 +472,7 @@ func _move(dt: float, mv: Vector2) -> void:
 		_stride += sp * dt
 		if _stride > 26.0:
 			_stride = 0.0
+			Game.sfx("step")
 			if sp > 70.0:
 				world.step_dust(global_position, velocity)
 	else:
@@ -515,10 +522,12 @@ func _melee_attack() -> void:
 	swing_dir *= -1.0
 	swing_len = float(weapon.get("swingTime", 0.16))
 	pending_hit = maxf(0.001, swing_len * float(weapon.get("windup", 0.0)))
+	Game.sfx("draw", {"weapon": weapon_id})
 
 func _melee_strike() -> void:
 	var lunge: float = 70.0 if weapon_id == "training_claymore" else (85.0 if weapon_id == "training_spear" else 55.0)
 	velocity += Vector2.from_angle(aim) * lunge
+	Game.sfx("swing", {"weapon": weapon_id})
 	var half := deg_to_rad(float(weapon.arcDeg)) / 2.0
 	world.slash_fx(global_position, aim, float(weapon.range), swing_dir, "thrust" if weapon_id == "training_spear" else ("large" if weapon_id == "training_claymore" else "small"), Color("ff7a62") if berserk.active else Color.WHITE)
 	var hit_any := false
@@ -565,13 +574,14 @@ func hit_target(tg, knock: float, focus_value: float, mult: float = 1.0, w = nul
 
 func _ranger_update(dt: float, fire: bool, fire_pressed: bool) -> void:
 	if weapon.get("auto", false):
-		_auto_fire(fire)
+		_auto_fire(fire, fire_pressed)
 		return
 	if not focusing and fire_pressed and attack_cd <= 0.0 and reload <= 0.0:
 		focusing = true
 		focus = 0.0
 		charged = false
 		overed = false
+		Game.sfx("draw", {"weapon": weapon_id})
 	if not focusing:
 		lock_target = null
 		return
@@ -580,9 +590,11 @@ func _ranger_update(dt: float, fire: bool, fire_pressed: bool) -> void:
 		focus = r.focus
 		if not charged and focus >= 1.0:
 			charged = true
+			Game.sfx("charged")
 			world.ring_fx(global_position, Color("ffe27a"))
 		if not overed and focus >= 1.5:
 			overed = true
+			Game.sfx("overfocus")
 			world.ring_fx(global_position, Color("ff9a3a"))
 		if r.staminaFrac > 0.0:
 			stamina = maxf(0.0, stamina - r.staminaFrac * stats.staminaCost * stats.maxStamina)
@@ -607,6 +619,7 @@ func _fire_ranged() -> void:
 		angle = (lock_target.global_position - global_position).angle()
 	var boost := 1.0 + (float(weapon.maxProjectileBoost) - 1.0) * minf(1.0, focus / 1.5)
 	_shoot(angle, float(weapon.projectileSpeed) * boost, focus)
+	Game.sfx("shoot", {"weapon": weapon_id, "power": minf(1.0, focus)})
 	attack_cd = weapon.cooldown
 	if weapon.has("reload"):
 		reload = weapon.reload
@@ -614,13 +627,17 @@ func _fire_ranged() -> void:
 		world.ring_fx(global_position, Color("ff9a3a") if focus > 1.5 else Color("ffe27a"))
 	in_combat_t = float(Data.constants.COMBAT_TIMEOUT)
 
-func _auto_fire(fire: bool) -> void:
+func _auto_fire(fire: bool, fire_pressed: bool = false) -> void:
 	focusing = false
 	focus = 0.0
 	lock_target = null
 	if not fire and atk_buf <= 0.0:
 		return
-	if reload > 0.0 or attack_cd > 0.0:
+	if reload > 0.0:
+		if fire_pressed and weapon.has("mag"):
+			Game.sfx("dry")   # an empty click while the magazine goes in
+		return
+	if attack_cd > 0.0:
 		return
 	var cost: float = float(weapon.stamina) * stats.staminaCost * stats.maxStamina
 	if stamina < cost:
@@ -635,6 +652,7 @@ func _auto_fire(fire: bool) -> void:
 	if weapon.has("spread"):
 		angle += (randf() - 0.5) * 2.0 * float(weapon.spread)
 	_shoot(angle, float(weapon.projectileSpeed), 1.0)
+	Game.sfx("shoot", {"weapon": weapon_id, "power": 1.0, "pitch": 1.18 if (weapon.has("mag") and ammo >= 0 and ammo <= 6) else 1.0})   # the last few rounds sound thinner
 	attack_cd = weapon.cooldown
 	in_combat_t = float(Data.constants.COMBAT_TIMEOUT)
 	if weapon.has("mag"):
@@ -642,6 +660,7 @@ func _auto_fire(fire: bool) -> void:
 		if ammo <= 0:
 			ammo = int(weapon.mag)
 			reload = weapon.reload
+			Game.sfx("magout")
 			world.float_text(global_position + Vector2(0, -16), "RELOAD", Color("ffe27a"))
 
 ## o: {x, y} where it leaves / {type} blessing look / {big} bigger picture / {mult} damage multiplier / {aoe: {r, dmg}} burst / {home, home_rate} / {radius}

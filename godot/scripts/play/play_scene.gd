@@ -47,6 +47,10 @@ var minimap
 var pointer: Sprite2D
 var goal_ring: Sprite2D
 var chest_count := 0
+var _xp_step := -1
+var _xp_at := 0.0
+var _hb_t := 0.0
+var _mood_t := 0.0
 var start_pos := Vector2.ZERO
 var tip_t := 0.0
 var _tip_check := 0.0
@@ -99,6 +103,13 @@ func _ready() -> void:
 	_arrive()
 
 func _arrive() -> void:
+	# the soundtrack: a calm hub on the floors, a dungeon theme that grows teeth when skeletons hunt you
+	Game.reset_threat()
+	Game.muffle(false)
+	if dun.is_empty():
+		Game.start_music("hub")
+	else:
+		Game.start_music("vault" if dun.kind == "hidden" else ("rift" if dun.kind == "double" else "dungeon"))
 	if not dun.is_empty():
 		var rr := Data.rank_range(String(dun.rank))
 		var top: String = "+" if int(rr.max) >= 999 else str(int(rr.max))
@@ -505,6 +516,14 @@ func _process(dt: float) -> void:
 	if Input.is_action_just_pressed("menu") and not map_closed and not hud.dialog_open and not ending and not menu.is_open and Time.get_ticks_msec() > menu_lock_until:
 		menu.open()
 	_update_guide(dt_real)
+	_hb_t -= dt_real
+	if not player.dead and player.hp / player.stats.maxHealth < 0.3 and _hb_t <= 0.0:
+		_hb_t = 0.97
+		Game.sfx("heartbeat")   # low health: pulse in sync with the red vignette
+	_mood_t -= dt_real
+	if _mood_t <= 0.0:
+		_mood_t = 0.25
+		_music_mood()
 	_tip_check -= dt_real
 	if _tip_check <= 0.0 and not frozen:
 		_tip_check = 0.25
@@ -578,6 +597,29 @@ func _update_guide(_dt: float) -> void:
 	mk.append(tile_of.call(p, "player"))
 	minimap.markers = mk
 
+## music intensity: 0 exploring, 1 something is onto you (or unsure), 2 a real fight (3+ hunters, or one up close)
+func _music_mood() -> void:
+	if dun.is_empty():
+		return
+	var hunters := 0
+	var close := false
+	var unsure := false
+	for e in enemy_list:
+		if not is_instance_valid(e) or not e.alive:
+			continue
+		if e.state == "chase" or e.state == "windup" or e.state == "recover":
+			hunters += 1
+			if e.global_position.distance_to(player.global_position) < 90.0:
+				close = true
+		elif e.state == "search" or e.alert > 0.45:
+			unsure = true
+	var mood := 0
+	if hunters > 0:
+		mood = 2 if (hunters >= 3 or close) else 1
+	elif unsure:
+		mood = 1
+	Game.threat(0 if player.dead else mood)
+
 func _tips() -> void:
 	var p = player
 	var pad: bool = Controls.using_pad
@@ -612,6 +654,7 @@ func _check_pickups() -> void:
 	for p in pickups.duplicate():
 		if p.pos.distance_to(player.global_position) < 10.0:
 			player.heal(player.stats.maxHealth * 0.25)
+			Game.sfx("pickup")
 			float_text(player.global_position + Vector2(0, -14), "+HP", Color("7fe08a"))
 			p.sprite.queue_free()
 			pickups.erase(p)
@@ -626,11 +669,13 @@ func travel(id: String) -> void:
 
 func _use_portal(to: Dictionary, tile: Vector2i, locked: bool, lock_text: String) -> void:
 	if locked:
+		Game.sfx("deny")
 		hud.toast("THE STAIRS ARE SEALED. CLEAR: " + lock_text.to_upper())
 		return
 	if ending:
 		return
 	ending = true
+	Game.sfx("portal")
 	if to.type == "floor":
 		Game.go_play({"kind": "floor", "id": to.id, "arrive_from": floor_id()})
 	else:
@@ -688,12 +733,14 @@ func leave_spec() -> Dictionary:
 
 func _open_chest(sprite: Sprite2D, it: Dictionary, idx: int = -1) -> void:
 	sprite.texture = Data.tex("o_chest_open")
+	Game.sfx("chest")
 	interactables.erase(it)
 	if idx >= 0 and run.has("chests"):
 		run.chests[idx] = true
 	var lv: int = Game.profile.level
 	var rare: bool = Game.rng.chance(0.2 + float(player.stats.lootLuck))
 	if rare:
+		Game.sfx("rare")
 		var xp := 60 + lv * 14
 		float_text(sprite.position + Vector2(0, -12), "RARE LOOT!", Color("ffd84a"), 1.5)
 		hud.toast("RARE LOOT! +%d XP, full recovery." % xp)
@@ -720,14 +767,23 @@ func spawn_orbs(pos: Vector2, amount: int) -> void:
 		tw.tween_method(func(u: float): o.position = o.position.lerp(player.global_position, u), 0.0, 1.0, 0.45)
 		tw.tween_callback(func():
 			if is_instance_valid(player):
+				_xp_sound()
 				gain_xp(share)
 			o.queue_free())
+
+## the pickup chain climbs while orbs keep arriving quickly (web: chainStep), and starts over after a pause
+func _xp_sound() -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	_xp_step = 0 if (_xp_step < 0 or now - _xp_at > 0.65) else mini(11, _xp_step + 1)
+	_xp_at = now
+	Game.sfx("xp", {"step": _xp_step})
 
 func gain_xp(amount: float) -> void:
 	var gained := Progression.add_xp(Game.profile, amount, player.stats.expRate * Game.t("xpRate"), Game.rng)
 	if gained > 0:
 		player.refresh_stats()
 		player.hp = player.stats.maxHealth
+		Game.sfx("levelup")
 		float_text(player.global_position + Vector2(0, -20), "LEVEL UP", Color("ffe27a"))
 		hud.toast("LEVEL UP!  LV %d  RANK %s" % [Game.profile.level, Data.rank_of_level(Game.profile.level)])
 		ring_fx(player.global_position, Color("ffe27a"))
@@ -764,6 +820,8 @@ func _mark_cleared(silent: bool) -> void:
 		Game.profile.flags[dun.clearFlag] = true
 	if silent:
 		return
+	Game.sfx("levelup")
+	Game.stinger("clear")
 	var bonus := roundi((30 + Game.profile.level * 6 + total_enemies * 8) * float(dun.xpBonus))
 	hud.toast("DUNGEON CLEARED!  BONUS +%d XP" % bonus)
 	gain_xp(bonus)
@@ -774,6 +832,8 @@ func on_player_death() -> void:
 	if ending:
 		return
 	ending = true
+	Game.stinger("death")
+	Game.stop_music(1.4)
 	hud.toast("YOU FELL...  THE TOWER SENDS YOU BACK.")
 	await get_tree().create_timer(1.4).timeout
 	Game.profile.traits = Progression.roll_run_traits(Game.rng, int(Data.constants.TRAIT_SLOTS))
@@ -1057,7 +1117,7 @@ func close_wheel(quiet: bool = false) -> void:
 func wheel_step(d: int) -> void:
 	var n: int = Data.skills.size()
 	wheel_idx = (wheel_idx + d + n) % n
-	Game.sfx("wheeltick")
+	Game.sfx("tick", {"dir": d})
 
 func confirm_wheel() -> void:
 	var id: String = Data.skills[wheel_idx].id

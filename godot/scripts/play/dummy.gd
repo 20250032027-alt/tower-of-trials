@@ -43,7 +43,7 @@ func setup(w, pos: Vector2) -> void:
 	label.z_index = 40
 	add_child(label)
 
-func hurt(damage: float, crit: bool, from_pos: Vector2, _knock: float, _info: Dictionary) -> float:
+func hurt(damage: float, crit: bool, from_pos: Vector2, _knock: float, info: Dictionary) -> float:
 	var dealt := Combat.after_mitigation(damage, 0.0, 0.0)
 	hits += 1
 	total += dealt
@@ -51,6 +51,7 @@ func hurt(damage: float, crit: bool, from_pos: Vector2, _knock: float, _info: Di
 	reset_t = 3.0
 	world.float_text(global_position + Vector2(randf_range(-5, 5), -8), str(roundi(dealt)), Color("ffd84a") if crit else Color.WHITE, 1.5 if crit else 1.0)
 	label.text = "HITS %d  TOTAL %d" % [hits, roundi(total)]
+	Game.sfx("hit", {"weapon": info.get("weapon"), "mat": "wood", "crit": crit})
 	world.hit_fx(global_position, (global_position - from_pos).angle(), crit)
 	return dealt
 
