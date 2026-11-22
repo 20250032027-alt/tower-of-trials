@@ -10,6 +10,9 @@ var dialog_open := false
 var dialog_title := ""
 var dialog_text := ""
 var enemies_left := -1
+var obj_text := ""
+var obj_dist := -1
+var minimap
 var toasts: Array = []   # {text, t}
 var hurt_a := 0.0
 var skill_flash := 0.0
@@ -26,7 +29,11 @@ func setup(w) -> void:
 	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.draw.connect(_draw_hud)
 	add_child(canvas)
-	enemies_left = world.total_enemies
+	enemies_left = world.enemy_list.size()
+	minimap = preload("res://scripts/ui/minimap.gd").new()
+	add_child(minimap)
+	minimap.setup(world, font)
+	world.minimap = minimap
 
 func toast(text: String) -> void:
 	toasts.append({"text": text, "t": 3.2})
@@ -87,6 +94,7 @@ func _draw_hud() -> void:
 	if not world.dun.is_empty():
 		var s := "CLEARED" if world.cleared else "ENEMIES %d/%d" % [enemies_left, world.total_enemies]
 		_text(Vector2(472, 25), s, Color("aaf0c0") if world.cleared else Color("ffb0a0"), 10, HORIZONTAL_ALIGNMENT_RIGHT, 200)
+	_draw_objective()
 	# weapon
 	var wn: String = String(p.weapon.name).to_upper()
 	_text(Vector2(8, 262), wn, Color("f4e7b0"))
@@ -94,7 +102,7 @@ func _draw_hud() -> void:
 	_draw_skill_box(p)
 	# stamina low hint, key hints
 	var pad: bool = Controls.using_pad
-	var hint := "B ROLL   Y SWAP   A USE   START MENU" if pad else "SPACE ROLL   Q SWAP   E USE   TAB MENU"
+	var hint := "B ROLL   Y SWAP   A USE   BACK MAP   START MENU" if pad else "SPACE ROLL  Q SWAP  E USE  M MAP  TAB MENU"
 	_text(Vector2(472, 262), hint, Color(1, 1, 1, 0.55), 10, HORIZONTAL_ALIGNMENT_RIGHT, 300)
 	# prompt
 	if prompt != "" and not dialog_open:
@@ -116,6 +124,22 @@ func _draw_hud() -> void:
 		_draw_wheel()
 	if dialog_open:
 		_draw_dialog()
+
+## the goal chip at the top: "! text  12m"
+func _draw_objective() -> void:
+	if obj_text == "" or world.minimap.big_open:
+		return
+	var s := obj_text.to_upper()
+	var dist := "  %dM" % obj_dist if obj_dist >= 0 else ""
+	var w := (s.length() + dist.length()) * 6.0 + 26.0
+	var r := Rect2(240.0 - w / 2.0, 5, w, 14)
+	canvas.draw_rect(r, Color(0.07, 0.05, 0.04, 0.82))
+	canvas.draw_rect(r, Color("c9a77a"), false, 1.0)
+	canvas.draw_rect(Rect2(r.position + Vector2(3, 3), Vector2(8, 8)), Color("ffe27a"))
+	_text(r.position + Vector2(5, 11), "!", Color("1a1208"))
+	_text(r.position + Vector2(15, 11), s, Color("fff2c4"))
+	if dist != "":
+		_text(r.position + Vector2(15 + s.length() * 6.0, 11), dist, Color("9fc8ff"))
 
 func _draw_dialog() -> void:
 	var r := Rect2(50, 40, 380, 190)

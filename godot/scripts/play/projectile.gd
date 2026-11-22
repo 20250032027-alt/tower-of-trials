@@ -79,6 +79,8 @@ func _physics_process(dt: float) -> void:
 	for i in steps:
 		global_position += vel * dt / steps
 		if world.is_wall_at(global_position):
+			if from_player:
+				world.wall_hit(global_position)
 			world.impact_fx(global_position, vel.angle())
 			if aoe != null:
 				world.player.projectile_burst(self)

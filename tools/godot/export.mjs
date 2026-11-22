@@ -19,7 +19,8 @@ import * as TR from '../../src/data/traits.js';
 import * as SK from '../../src/data/skills.js';
 import { TUNING_GROUPS } from '../../src/data/tuning.js';
 import { FLOORS, DUNGEONS, RIFT_OF, TOWER } from '../../src/data/world.js';
-import { buildLayout, generateRandomDef } from '../../src/logic/layout.js';
+import { buildLayout, generateRandomDef, pickRiftSpot } from '../../src/logic/layout.js';
+import { makeRng } from '../../src/logic/rng.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const out = join(root, 'godot');
@@ -58,7 +59,7 @@ const json = (name, obj) => writeFileSync(join(out, 'data', name + '.json'), JSO
 json('constants', {
   RANKS: C.RANKS, RANK_COLORS: C.RANK_COLORS, LEVEL_MIN: C.LEVEL_MIN, LEVEL_MAX: C.LEVEL_MAX, BASIC_GROWTH: C.BASIC_GROWTH, CRIT_GROWTH: C.CRIT_GROWTH,
   UNITS: C.UNITS, PLAYER_BASE: C.PLAYER_BASE, COMBAT_TIMEOUT: C.COMBAT_TIMEOUT, TRAIT_SLOTS: C.TRAIT_SLOTS, BERSERK: C.BERSERK, FOCUS: C.FOCUS,
-  MANA_CIRCLE_CHANCE: C.MANA_CIRCLE_CHANCE, MANA_TYPES: C.MANA_TYPES, RANK_ORDER: C.RANK_ORDER, GAME_TITLE: C.GAME_TITLE, GEMINI_NOTICE: C.GEMINI_NOTICE,
+  MANA_CIRCLE_CHANCE: C.MANA_CIRCLE_CHANCE, MANA_TYPES: C.MANA_TYPES, RANK_ORDER: C.RANK_ORDER, GAME_TITLE: C.GAME_TITLE, GEMINI_NOTICE: C.GEMINI_NOTICE, DOUBLE_DUNGEON_CHANCE: C.DOUBLE_DUNGEON_CHANCE,
   xpToNext: 'round(30 + 14 * level)',
 });
 json('weapons', WEAPONS);
@@ -74,7 +75,7 @@ json('art_sizes', sizes);
 mk(join(out, 'tests/fixtures'));
 const fx = (name, def, seed) => {
   const L = buildLayout(def, seed);
-  writeFileSync(join(out, 'tests/fixtures', name + '.json'), JSON.stringify({ seed, def, w: L.w, h: L.h, tiles: Array.from(L.tiles), spawn: L.spawn, objects: L.objects, enemies: L.enemies, rooms: L.rooms }) + '\n');
+  writeFileSync(join(out, 'tests/fixtures', name + '.json'), JSON.stringify({ seed, def, w: L.w, h: L.h, tiles: Array.from(L.tiles), spawn: L.spawn, objects: L.objects, enemies: L.enemies, rooms: L.rooms, rift: pickRiftSpot(L, makeRng(seed ^ 0x9e3779b9)) }) + '\n');
 };
 fx('layout_tutorial', FLOORS.tutorial.layout, 1);
 fx('layout_trial', DUNGEONS.trial.layout, 7);

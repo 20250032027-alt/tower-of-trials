@@ -214,5 +214,9 @@
  ],
  "GAME_TITLE": "Tower of [Trials]",
  "GEMINI_NOTICE": "Constellation [Gemini] blesses you with her creation and divinity.",
+ "DOUBLE_DUNGEON_CHANCE": {
+  "preset": 0.03,
+  "randomized": 0.12
+ },
  "xpToNext": "round(30 + 14 * level)"
 }

@@ -81,6 +81,8 @@ func test_layouts() -> void:
 		var fx := _fixture(name)
 		var built: Dictionary = Layout.build(fx.def, int(fx.seed))
 		_same_layout(name, built, fx)
+		var spot: Dictionary = Layout.pick_rift_spot(built, Rng.new(int(fx.seed) ^ 0x9e3779b9))
+		ok(spot.x == int(fx.rift.x) and spot.y == int(fx.rift.y) and String(spot.room) == String(fx.rift.room), "%s: the rift opens in the same place (%d,%d)" % [name, spot.x, spot.y])
 
 func test_random_def() -> void:
 	print("random dungeon description")

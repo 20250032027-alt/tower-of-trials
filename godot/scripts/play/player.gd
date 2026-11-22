@@ -337,6 +337,8 @@ func _physics_process(dt: float) -> void:
 	in_combat_t = maxf(0.0, in_combat_t - dt)
 	reload = maxf(0.0, reload - dt)
 
+	if not Game.profile.flags.get("tutMoved", false) and global_position.distance_to(world.start_pos) > 24.0:
+		Game.profile.flags["tutMoved"] = true
 	var mv: Vector2 = Controls.move_vector()
 	var fire: bool = Input.is_action_pressed("attack") and not world.wheel_open
 	var fire_pressed: bool = Input.is_action_just_pressed("attack") and not world.wheel_open
@@ -532,6 +534,7 @@ func _melee_strike() -> void:
 			continue
 		hit_target(tg, float(weapon.knockback), 1.0)
 		hit_any = true
+	world.crack_hit(global_position, aim, float(weapon.range), half)
 	if hit_any:
 		var heavy := weapon_id == "training_claymore"
 		world.shake(4.0 if heavy else 2.0, 0.12)

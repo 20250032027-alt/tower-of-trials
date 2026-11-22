@@ -133,6 +133,28 @@ static func build(def: Dictionary, seed_value: int = 1) -> Dictionary:
 			objects.append({"type": "chest", "x": p.x, "y": p.y})
 	return {"w": w, "h": h, "tiles": tiles, "spawn": spawn, "objects": objects, "enemies": enemies, "rooms": rooms, "cracks": cracks, "seed": seed_value}
 
+## where the rift of a double dungeon opens: inside a room with enemies (web: pickRiftSpot)
+static func pick_rift_spot(layout: Dictionary, rng) -> Dictionary:
+	var pool: Array = []
+	for r in layout.rooms:
+		if String(r.role) == "" and int(r.enemies) > 0:
+			pool.append(r)
+	if pool.is_empty():
+		for r in layout.rooms:
+			if String(r.role) != "start":
+				pool.append(r)
+	var room: Dictionary = rng.pick(pool)
+	var taken := {}
+	for o in layout.objects:
+		taken["%d,%d" % [int(o.x), int(o.y)]] = true
+	var w: int = layout.w
+	for tries in 60:
+		var x: int = rng.int_range(int(room.x) + 1, int(room.x) + int(room.w) - 2)
+		var y: int = rng.int_range(int(room.y) + 1, int(room.y) + int(room.h) - 2)
+		if not is_wall(layout.tiles[y * w + x]) and not taken.has("%d,%d" % [x, y]):
+			return {"x": x, "y": y, "room": room.id}
+	return {"x": int(room.cx), "y": int(room.cy), "room": room.id}
+
 static func _random_floor_tile(rng, solid: PackedByteArray, w: int, h: int, r: Dictionary, margin: int, avoid: Array, occupied: Dictionary) -> Variant:
 	for tries in 80:
 		var x: int = rng.int_range(int(r.x) + margin, int(r.x) + int(r.w) - 1 - margin)

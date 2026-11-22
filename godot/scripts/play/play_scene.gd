@@ -10,6 +10,7 @@ const Enemy = preload("res://scripts/play/enemy.gd")
 const Dummy = preload("res://scripts/play/dummy.gd")
 const Hud = preload("res://scripts/play/hud.gd")
 const Menu = preload("res://scripts/ui/menu.gd")
+const Guide = preload("res://scripts/logic/guide.gd")
 
 const TS := 16
 
@@ -36,6 +37,20 @@ var player
 var enemy_list: Array = []
 var dummy_list: Array = []
 var interactables: Array = []
+var poi: Dictionary = {}          # points of interest (portal:<id>, exit, loadout, rift) for the goal arrow and the map
+var poi_hidden: Dictionary = {}   # portal keys that stay off the map until you have walked past them
+var run: Dictionary = {}          # this dungeon's run: killed enemies, opened chests, its rift (kept while you visit the rift)
+var run_key := ""
+var map_key := ""
+var crack_hp: Dictionary = {}     # sealed cracked walls: Vector2i -> hits left
+var minimap
+var pointer: Sprite2D
+var goal_ring: Sprite2D
+var chest_count := 0
+var start_pos := Vector2.ZERO
+var tip_t := 0.0
+var _tip_check := 0.0
+var _obj: Dictionary = {}
 var pickups: Array = []
 var animated: Array = []
 var wheel_open := false
@@ -51,6 +66,9 @@ func _ready() -> void:
 	spec = Game.pending if not Game.pending.is_empty() else {"kind": "floor", "id": "tutorial"}
 	_resolve()
 	layout = Layout.build(_layout_def(), seed_value)
+	map_key = run_key if run_key != "" else "floor:" + String(spec.id)
+	_roll_rift()
+	_prepare_cracks()
 	_build_tiles()
 	entities = Node2D.new()
 	entities.y_sort_enabled = true
@@ -68,9 +86,107 @@ func _ready() -> void:
 	menu = Menu.new()
 	add_child(menu)
 	menu.setup(self)
-	if not dun.is_empty() and total_enemies == 0:
+	pointer = Sprite2D.new()
+	pointer.z_index = 60
+	pointer.visible = false
+	add_child(pointer)
+	goal_ring = Sprite2D.new()
+	goal_ring.z_index = 60
+	goal_ring.visible = false
+	add_child(goal_ring)
+	if not dun.is_empty() and enemy_list.is_empty() and total_enemies > 0:
 		_mark_cleared(true)
-	hud.toast((String(dun.name) if not dun.is_empty() else String(floor_def.name)).to_upper())
+	_arrive()
+
+func _arrive() -> void:
+	if not dun.is_empty():
+		var rr := Data.rank_range(String(dun.rank))
+		var top: String = "+" if int(rr.max) >= 999 else str(int(rr.max))
+		hud.toast("ENTERED: %s  (RANK %s, LV %d-%s)" % [String(dun.name).to_upper(), dun.rank, int(rr.min), top])
+		if dun.kind == "double":
+			hud.toast("DOUBLE DUNGEON: DIFFICULTY EXCEEDS NORMAL SCALING!")
+		if dun.kind == "hidden":
+			hud.toast("A HIDDEN DUNGEON. FEW HAVE SEEN THIS PLACE.")
+	else:
+		var key := "seen_" + String(floor_def.id)
+		if floor_def.has("intro") and not Game.profile.flags.get(key, false):
+			Game.profile.flags[key] = true
+			hud.toast(String(floor_def.intro).to_upper())
+		else:
+			hud.toast(String(floor_def.name).to_upper())
+	if run.get("rift") != null:
+		hud.toast("YOU SENSE A RIFT SOMEWHERE IN THIS DUNGEON.")
+
+## double dungeon: on the first visit a dungeon may hold a rift (always, if the demo switch is on)
+func _roll_rift() -> void:
+	if dun.is_empty() or not (dun.kind in ["preset", "main", "random"]) or run.has("rift"):
+		return
+	var chance: float = float(Data.constants.DOUBLE_DUNGEON_CHANCE["randomized" if dun.kind == "random" else "preset"])
+	var rr = Rng.new(seed_value ^ 0x9e3779b9)
+	run["rift"] = Layout.pick_rift_spot(layout, rr) if (Game.profile.demo.get("doubleAlways", false) or rr.chance(chance)) else null
+
+## cracked walls: a floor whose wall you already broke stays open, the rest wait for three hits
+func _prepare_cracks() -> void:
+	var opened: bool = not floor_def.is_empty() and Game.profile.flags.get("cracked_" + String(floor_def.id), false)
+	for cr in layout.cracks:
+		if opened:
+			layout.tiles[cr.y * layout.w + cr.x] = Layout.FLOOR_B
+		else:
+			crack_hp[Vector2i(cr.x, cr.y)] = 3
+
+## where the next sealed crack is (for the goal arrow)
+func crack_target() -> Variant:
+	for k in crack_hp.keys():
+		return tile_center(k.x, k.y)
+	return null
+
+func hit_crack_tile(tx: int, ty: int) -> void:
+	var key := Vector2i(tx, ty)
+	if not crack_hp.has(key):
+		return
+	crack_hp[key] -= 1
+	Game.sfx("crack")
+	var c := tile_center(tx, ty)
+	burst(c, Color("d8c9a8"), 4, 60.0)
+	shake(2.0, 0.08)
+	if crack_hp[key] > 0:
+		return
+	crack_hp.erase(key)
+	layout.tiles[ty * layout.w + tx] = Layout.FLOOR_B
+	tilemap.set_cell(key, 0, Vector2i(Layout.FLOOR_B, 0))
+	minimap.repaint(tx, ty)
+	if not floor_def.is_empty():
+		Game.profile.flags["cracked_" + String(floor_def.id)] = true
+	Game.profile.flags["hiddenOpened"] = true
+	for i in 3:
+		burst(c, Color("b9a98a"), 6, 110.0)
+	Game.sfx("crumble")
+	shake(5.0, 0.22)
+	hud.toast("THE WALL CRUMBLES... A HIDDEN PATH IS REVEALED!")
+
+## a swing: any sealed crack inside the arc takes a hit
+func crack_hit(pos: Vector2, aim: float, reach: float, half: float) -> void:
+	for key in crack_hp.keys():
+		var c := tile_center(key.x, key.y)
+		if pos.distance_to(c) > reach + 10.0:
+			continue
+		if absf(angle_difference((c - pos).angle(), aim)) > half + 0.5:
+			continue
+		hit_crack_tile(key.x, key.y)
+
+## a player shot ended in a wall: if that was a crack it takes the hit
+func wall_hit(pos: Vector2) -> void:
+	var tx := int(floor(pos.x / TS))
+	var ty := int(floor(pos.y / TS))
+	if tx >= 0 and ty >= 0 and tx < layout.w and ty < layout.h and layout.tiles[ty * layout.w + tx] == Layout.CRACK:
+		hit_crack_tile(tx, ty)
+
+func tip(id: String, text: String) -> void:
+	var f: Dictionary = Game.profile.flags
+	if f.get("tip_" + id, false):
+		return
+	f["tip_" + id] = true
+	hud.toast(text.to_upper())
 
 func _resolve() -> void:
 	if spec.kind == "floor":
@@ -80,7 +196,12 @@ func _resolve() -> void:
 	else:
 		dun = Data.dungeons[spec.id]
 		theme_id = dun.theme
-		seed_value = int(spec.get("seed", randi() % 100000 + 1))
+		# a random dungeon is new each time; the others always get the same seed (so a visit to the rift finds it as you left it)
+		seed_value = int(spec.seed) if spec.has("seed") else (randi() % 100000 + 1 if dun.kind == "random" else Rng.hash_string(String(spec.id)))
+		run_key = "%s:%d" % [spec.id, seed_value]
+		if not Game.runs.has(run_key):
+			Game.runs[run_key] = {"killed": {}, "chests": {}}
+		run = Game.runs[run_key]
 
 func _layout_def() -> Dictionary:
 	if not floor_def.is_empty():
@@ -194,7 +315,10 @@ func _flat(key: String, pos: Vector2) -> Sprite2D:
 
 func _build_objects() -> void:
 	var flags: Dictionary = Game.profile.flags
-	for o in layout.objects:
+	var objs: Array = layout.objects.duplicate()
+	if run.get("rift") != null:
+		objs.append({"type": "rift", "x": int(run.rift.x), "y": int(run.rift.y)})
+	for o in objs:
 		var c := tile_center(int(o.x), int(o.y))
 		match o.type:
 			"sign":
@@ -213,6 +337,7 @@ func _build_objects() -> void:
 			"altar":
 				var key := "o_altar_mana" if o.kind == "mana" else "o_altar_loadout"
 				_flat(key, c)
+				poi["mana" if o.kind == "mana" else "loadout"] = c
 				_label(c + Vector2(0, -17), o.label, Color("d6b0ff") if o.kind == "mana" else Color("9fc8ff"))
 				_add_interact(c, 24.0, func(): return ("MANA ALTAR" if o.kind == "mana" else "OPEN LOADOUT"), func(): Game.sfx("ui"); menu.open("magic" if o.kind == "mana" else "traits"))
 			"portal":
@@ -224,6 +349,9 @@ func _build_objects() -> void:
 				if not locked:
 					animated.append({"sprite": sp, "prefix": prefix, "n": 4, "speed": 6.0})
 					add_child(_glow(c, Color("ffd84a") if hidden else Color("4f8dff")))
+				poi["portal:" + String(o.to.id)] = c
+				if hidden:
+					poi_hidden["portal:" + String(o.to.id)] = true
 				var lock_text: String = o.get("lockText", "CLEAR THE TRIAL OF BONES")
 				_label(c + Vector2(0, -19), String(o.label) + (" (LOCKED)" if locked else ""), Color("8a7a99") if locked else Color("bfe0ff"))
 				var to: Dictionary = o.to
@@ -233,18 +361,30 @@ func _build_objects() -> void:
 					func(): return ("LOCKED: " + lock_text) if locked else (("TAKE " if to.type == "floor" else "ENTER ") + lbl),
 					func(): _use_portal(to, tile, locked, lock_text))
 			"exit":
+				poi["exit"] = c
 				var sp2 := _flat("o_exit_0", c)
 				animated.append({"sprite": sp2, "prefix": "o_exit_", "n": 4, "speed": 6.0})
 				add_child(_glow(c, Color("4fd37a")))
 				_label(c + Vector2(0, -19), "EXIT", Color("aaf0c0"))
 				_add_interact(c, 18.0, func(): return "LEAVE DUNGEON (CLEARED!)" if cleared else "LEAVE DUNGEON (ENEMIES REMAIN)", func(): _leave_dungeon())
+			"rift":
+				poi["rift"] = c
+				var rs := _flat("o_rift_0", c)
+				animated.append({"sprite": rs, "prefix": "o_rift_", "n": 4, "speed": 9.0})
+				add_child(_glow(c, Color("b04fff"), 1.6))
+				_label(c + Vector2(0, -21), "RIFT: DOUBLE DUNGEON", Color("e0a8ff"))
+				_add_interact(c, 20.0, func(): return "ENTER THE RIFT (VERY DANGEROUS)", func(): _enter_rift())
 			"chest":
+				var idx := chest_count
+				chest_count += 1
+				var opened: bool = run.get("chests", {}).has(idx)
 				var ch := Sprite2D.new()
-				ch.texture = Data.tex("o_chest")
+				ch.texture = Data.tex("o_chest_open" if opened else "o_chest")
 				ch.position = c
 				entities.add_child(ch)
-				var it := _add_interact(c, 18.0, func(): return "OPEN CHEST", func(): pass)
-				it.act = func(): _open_chest(ch, it)
+				if not opened:
+					var it := _add_interact(c, 18.0, func(): return "OPEN CHEST", func(): pass)
+					it.act = func(): _open_chest(ch, it, idx)
 			_:
 				pass
 
@@ -255,6 +395,9 @@ func _build_enemies() -> void:
 	var rr := Data.rank_range(dun.rank)
 	var i := 0
 	for e in layout.enemies:
+		if run.get("killed", {}).has(i):
+			i += 1
+			continue
 		var rng = Rng.new(seed_value * 31 + i * 977)
 		var lvl: int
 		if dun.kind == "double":
@@ -277,6 +420,7 @@ func _build_player() -> void:
 	if spec.has("spawn_tile"):
 		tile = spec.spawn_tile
 	player.global_position = tile_center(tile.x, tile.y)
+	start_pos = player.global_position
 
 func _build_camera() -> void:
 	camera = Camera2D.new()
@@ -350,15 +494,107 @@ func _process(dt: float) -> void:
 		camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake_amt * clampf(shake_t / 0.12, 0.0, 1.0) * Game.shake_scale() / 0.3 + kick_off
 	else:
 		camera.offset = kick_off
-	frozen = hud.dialog_open or ending or menu.is_open
+	frozen = hud.dialog_open or ending or menu.is_open or minimap.big_open
 	_drive_wheel()
+	var map_closed := _drive_map()
 	if not frozen and not player.dead:
 		_check_interact()
 		_check_pickups()
 	elif hud.dialog_open and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("attack") or Input.is_action_just_pressed("menu")):
 		hud.close_dialog()
-	if Input.is_action_just_pressed("menu") and not hud.dialog_open and not ending and not menu.is_open and Time.get_ticks_msec() > menu_lock_until:
+	if Input.is_action_just_pressed("menu") and not map_closed and not hud.dialog_open and not ending and not menu.is_open and Time.get_ticks_msec() > menu_lock_until:
 		menu.open()
+	_update_guide(dt_real)
+	_tip_check -= dt_real
+	if _tip_check <= 0.0 and not frozen:
+		_tip_check = 0.25
+		_tips()
+
+## the full map: M (Back on a pad) opens it, M / Back / menu / B / E closes it. The world waits while it is open.
+func _drive_map() -> bool:
+	if minimap.big_open:
+		if Input.is_action_just_pressed("full_map") or Input.is_action_just_pressed("menu") or Input.is_action_just_pressed("dodge") or Input.is_action_just_pressed("interact"):
+			minimap.set_big(false)
+			menu_lock_until = Time.get_ticks_msec() + 250
+			return true
+	elif Input.is_action_just_pressed("full_map") and not hud.dialog_open and not ending and not menu.is_open and not player.dead:
+		close_wheel(true)
+		minimap.set_big(true)
+	return false
+
+# ------------------------------------------------------------------ the guide: goal text, arrow, ring, minimap markers, one-time tips
+func _update_guide(_dt: float) -> void:
+	var p: Vector2 = player.global_position
+	minimap.reveal(int(floor(p.x / TS)), int(floor(p.y / TS)))
+	_obj = Guide.objective(self)
+	var show: bool = Game.settings.guide
+	var target = _obj.target
+	hud.obj_text = String(_obj.text) if show else ""
+	hud.obj_dist = roundi(target.distance_to(p) / TS) if (show and target != null) else -1
+	var now := Time.get_ticks_msec() / 1000.0
+	var ring := false
+	pointer.visible = false
+	if show and target != null:
+		var cam := camera.get_screen_center_position()
+		var sp: Vector2 = target - cam + Vector2(240, 135)   # where the goal is on the 480x270 screen
+		var r := Rect2(18, 40, 444, 196)
+		if r.has_point(sp):
+			ring = true
+			var f: int = [0, 1, 2, 1][int(now / 0.17) % 4]
+			goal_ring.texture = Data.tex("fx_goal_%d" % f)
+			goal_ring.position = (target + Vector2(0, -2)).round()
+			goal_ring.visible = true
+		else:
+			var c := r.get_center()
+			var d := sp - c
+			var t := minf(r.size.x / 2.0 / maxf(0.001, absf(d.x)), r.size.y / 2.0 / maxf(0.001, absf(d.y)))
+			var k := roundi(d.angle() / TAU * 16.0)
+			var ang := float(k) * TAU / 16.0
+			var bob := roundf(sin(now * 1000.0 / 150.0))
+			pointer.texture = Data.tex("fx_ptr_%d" % (((k % 16) + 16) % 16))
+			pointer.position = (cam - Vector2(240, 135) + c + d * t + Vector2.from_angle(ang) * bob).round()
+			pointer.visible = true
+	goal_ring.visible = ring
+	# the minimap
+	var mk: Array = []
+	var tile_of := func(v: Vector2, kind: String) -> Dictionary: return {"x": v.x / TS, "y": v.y / TS, "kind": kind}
+	for key in poi.keys():
+		if String(key).begins_with("portal:"):
+			var q: Vector2 = poi[key]
+			if poi_hidden.has(key) and not minimap.is_explored(int(q.x / TS), int(q.y / TS)):
+				continue   # secrets stay secret until you walk past
+			mk.append(tile_of.call(q, "hidden" if poi_hidden.has(key) else "portal"))
+	if poi.has("exit"):
+		mk.append(tile_of.call(poi.exit, "exit"))
+	if poi.has("rift") and run.get("rift") != null:
+		mk.append(tile_of.call(poi.rift, "rift"))
+	if poi.has("loadout"):
+		mk.append(tile_of.call(poi.loadout, "portal"))
+	for e in enemy_list:
+		if is_instance_valid(e) and e.alive and e.global_position.distance_to(p) < 16.0 * TS:
+			mk.append(tile_of.call(e.global_position, "enemy"))
+	if target != null and show and int(now / 0.35) % 2 == 0:
+		mk.append(tile_of.call(target, "goal"))
+	mk.append(tile_of.call(p, "player"))
+	minimap.markers = mk
+
+func _tips() -> void:
+	var p = player
+	var pad: bool = Controls.using_pad
+	if not dun.is_empty():
+		for e in enemy_list:
+			if is_instance_valid(e) and e.alive and e.global_position.distance_to(p.global_position) < 130.0:
+				tip("enemy", "Skeletons! Hold RT to fight, B to roll away." if pad else "Skeletons! Click to fight, SPACE to roll away.")
+				break
+	if p.hp / p.stats.maxHealth < 0.3:
+		tip("lowhp", "Low health! Back off: you recover when out of combat.")
+	tip_t += 0.25
+	if not floor_def.is_empty() and floor_def.id == "floor1" and tip_t > 12.0:
+		tip("map", "Press BACK for the full map." if pad else "Press M for the full map.")
+	if p.weapon.cls == "ranger":
+		tip("focus", "Ranged: HOLD attack to focus, RELEASE to fire.")
+	if p.weapon.cls == "melee" and int(Game.profile.kills) >= 2:
+		tip("aura", "Tip: press RB for Berserk (more damage, drains Force)." if pad else "Tip: press R for Berserk (more damage, drains Force).")
 
 func _check_interact() -> void:
 	var best = null
@@ -401,18 +637,60 @@ func _use_portal(to: Dictionary, tile: Vector2i, locked: bool, lock_text: String
 		Game.profile.flags["seen_" + String(to.id)] = true
 		Game.go_play({"kind": "dungeon", "id": to.id, "return_floor": floor_id(), "return_tile": tile})
 
+func _enter_rift() -> void:
+	if ending:
+		return
+	ending = true
+	Game.sfx("portal")
+	hud.toast("YOU STEP INTO THE RIFT...")
+	Game.go_play(rift_spec())
+
+## where the rift leads: the double dungeon of this floor, remembering how to come back
+func rift_spec() -> Dictionary:
+	var parent := {"id": String(spec.id), "seed": seed_value, "tile": Vector2i(int(run.rift.x), int(run.rift.y))}
+	var next := {"kind": "dungeon", "id": String(Data.rift_of.get(String(dun.floor), "rift")), "parent_rank": String(dun.rank), "parent": parent}
+	for k in ["return_floor", "return_tile"]:
+		if spec.has(k):
+			parent[k] = spec[k]
+			next[k] = spec[k]
+	return next
+
 func _leave_dungeon() -> void:
 	if ending:
 		return
 	ending = true
+	Game.sfx("portal")
+	Game.go_play(leave_spec())
+
+## where the exit leads (and the book-keeping that goes with leaving): out of a rift back to its dungeon, out of a dungeon back to the floor
+func leave_spec() -> Dictionary:
+	if dun.kind == "double" and spec.has("parent"):
+		var p: Dictionary = spec.parent
+		if cleared:   # the rift is spent once you have cleared it
+			var pr = Game.runs.get("%s:%d" % [p.id, int(p.seed)])
+			if pr != null:
+				pr["rift"] = null
+		var back := {"kind": "dungeon", "id": p.id, "seed": int(p.seed), "spawn_tile": p.tile}
+		for k in ["return_floor", "return_tile"]:
+			if p.has(k):
+				back[k] = p[k]
+		return back
+	Game.runs.erase(run_key)
+	if Game.deal_traits():   # the dungeon was the run: the next one gets new skills
+		var names: Array = []
+		for id in Game.profile.traits:
+			names.append(String(Data.trait_by_id[id].name).to_upper())
+		hud.toast("NEW SKILLS: " + ", ".join(names))
 	var next := {"kind": "floor", "id": spec.get("return_floor", dun.floor)}
 	if spec.has("return_tile"):
 		next["spawn_tile"] = spec.return_tile
-	Game.go_play(next)
+	return next
 
-func _open_chest(sprite: Sprite2D, it: Dictionary) -> void:
+func _open_chest(sprite: Sprite2D, it: Dictionary, idx: int = -1) -> void:
 	sprite.texture = Data.tex("o_chest_open")
 	interactables.erase(it)
+	if idx >= 0 and run.has("chests"):
+		run.chests[idx] = true
 	var lv: int = Game.profile.level
 	var rare: bool = Game.rng.chance(0.2 + float(player.stats.lootLuck))
 	if rare:
@@ -459,6 +737,8 @@ func gain_xp(amount: float) -> void:
 
 func on_enemy_killed(e) -> void:
 	Game.profile.kills += 1
+	if run.has("killed"):
+		run.killed[e.idx] = true
 	player.on_kill()
 	spawn_orbs(e.global_position, Progression.xp_from_enemy(e.def, e.level, float(dun.get("xpBonus", 1.0))))
 	if Game.rng.chance(float(e.def.healDropChance)):
