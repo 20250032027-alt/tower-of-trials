@@ -389,6 +389,15 @@ export function createUI() {
         ${kt(['WHEEL'], 'Zoom in / out')}${kt(['E'], 'Use / open / read')}
         ${kt(['M'], 'Full map')}${kt(['TAB'], 'Menu (ESC too)')}${kt(['N'], 'Sound on / off')}
       </div>
+      <h3>CONTROLLER</h3>
+      <div class="keytable">
+        ${kt(['L STICK'], 'Move (D-pad too)')}${kt(['R STICK'], 'Aim. Let go and it faces your target')}
+        ${kt(['RT', 'X'], 'Attack. Hold to Focus / Cast')}${kt(['B', 'LT'], 'Dodge roll')}
+        ${kt(['LB'], 'Skill wheel: D-pad or sticks scroll, A or LB uses, B closes')}${kt(['A'], 'Use / open / read')}
+        ${kt(['RB'], 'Sword Aura (Berserk)')}${kt(['Y'], 'Swap weapon')}
+        ${kt(['R3'], 'Lock-on on / off')}${kt(['BACK'], 'Full map')}${kt(['START'], 'Menu')}
+      </div>
+      <p class="hint">Menus with a controller: D-pad moves the highlight, A presses, B or START closes, LB / RB change tab, right stick scrolls.</p>
       <p class="hint">Touch: left thumb moves, drag the ATTACK button to aim, DODGE / AURA / SWAP / USE buttons on the right, skills in the arc above them.</p>
       <p class="hint">Tip: the yellow arrow always points at your next goal. If you ever feel lost, just follow it.</p>
       <h3>ENEMIES</h3>
@@ -410,7 +419,8 @@ export function createUI() {
       <div class="row">
         <button class="btn small" data-act="setOpt" data-k="guide">GOAL ARROW: <b>${on(S.guide)}</b></button>
         <button class="btn small" data-act="setOpt" data-k="minimap">MINIMAP: <b>${on(S.minimap)}</b></button>
-        <button class="btn small" data-act="setOpt" data-k="autoAim">AUTO-AIM (TOUCH): <b>${on(S.autoAim)}</b></button>
+        <button class="btn small" data-act="setOpt" data-k="autoAim">AUTO-AIM (TOUCH / PAD): <b>${on(S.autoAim)}</b></button>
+        <button class="btn small" data-act="setOpt" data-k="rumble">RUMBLE: <b>${on(S.rumble !== false)}</b></button>
         <button class="btn small" data-act="setOpt" data-k="lockOn">LOCK-ON <i>(T)</i>: <b>${on(S.lockOn !== false)}</b></button>
       </div>
       <div class="row">

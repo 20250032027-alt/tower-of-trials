@@ -6,6 +6,7 @@ import { createUI } from './ui/ui.js';
 import { createHudDom } from './ui/hud-dom.js';
 import { createTouchPad } from './ui/touch-dom.js';
 import { initLayoutWatcher } from './ui/controls.js';
+import { initGamepad } from './ui/gamepad.js';
 import { G } from './game/state.js';
 import { music } from './game/music.js';
 
@@ -13,6 +14,7 @@ import { music } from './game/music.js';
 createUI();
 G.hud = createHudDom();
 G.pad = createTouchPad();
+initGamepad();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

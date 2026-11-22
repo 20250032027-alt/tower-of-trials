@@ -639,3 +639,16 @@ body.touch .h-tl .bar.st, body.touch .h-tl .bar.mp { height: 12px; }
 .skill.fl-use { animation: fluse .28s ease-out; }
 .lowammo { color: #ff7a6a; animation: lowammo .45s steps(2) infinite; }
 .reloading { color: #ffe27a; animation: lowammo .6s steps(2) infinite; }
+
+/* ---- controller: the highlight in menus, a hint bar, and the swap of on-screen hints while a pad is in use ---- */
+.padfocus { outline: 2px solid #ffe27a !important; outline-offset: 1px; box-shadow: 0 0 0 4px rgba(255,226,122,.22); position: relative; z-index: 1; animation: padpulse .9s steps(2) infinite; }
+@keyframes padpulse { 50% { outline-color: #fff3c2; box-shadow: 0 0 0 5px rgba(255,226,122,.32); } }
+#padhint { position: fixed; left: 50%; bottom: calc(10px * var(--ui, 1)); transform: translateX(-50%); z-index: 90; padding: 4px 10px; background: rgba(13,11,20,.88); border: 2px solid #3b3350; color: #cfc6e0; font-size: calc(9px * var(--ui, 1)); letter-spacing: 1px; white-space: nowrap; pointer-events: none; }
+#padhint b { color: #ffe27a; margin: 0 3px 0 8px; } #padhint b:first-child { margin-left: 0; }
+#padhint.hidden { display: none; }
+.pdh { display: none; }
+body.padmode .pdh { display: inline; }
+body.padmode .kbh { display: none; }
+body.padmode #pad { display: none !important; }
+body.padmode .sw-foot .ktc, body.padmode.touch .sw-foot .kpc.kbh { display: none; }
+body.padmode.touch .sw-foot .kpc.pdh { display: inline; }

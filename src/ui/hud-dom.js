@@ -47,8 +47,10 @@ export function createHudDom() {
       <img class="wi" alt=""><div><div class="wn"></div><div class="wx"></div></div>
     </div>
     <div class="h-br keyhints">
-      <span><kbd>SPACE</kbd>DODGE</span><span><kbd>R</kbd>AURA</span><span><kbd>Q</kbd>SWAP</span>
-      <span><kbd>E</kbd>USE</span><span><kbd>WHEEL</kbd>ZOOM</span><span><kbd>TAB</kbd>MENU</span>
+      <span class="kbh"><kbd>SPACE</kbd>DODGE</span><span class="kbh"><kbd>R</kbd>AURA</span><span class="kbh"><kbd>Q</kbd>SWAP</span>
+      <span class="kbh"><kbd>E</kbd>USE</span><span class="kbh"><kbd>WHEEL</kbd>ZOOM</span><span class="kbh"><kbd>TAB</kbd>MENU</span>
+      <span class="pdh"><kbd>B</kbd>DODGE</span><span class="pdh"><kbd>RB</kbd>AURA</span><span class="pdh"><kbd>Y</kbd>SWAP</span>
+      <span class="pdh"><kbd>A</kbd>USE</span><span class="pdh"><kbd>LB</kbd>SKILLS</span><span class="pdh"><kbd>START</kbd>MENU</span>
     </div>
     <div id="skillwheel" class="hidden">
       <div class="sw-box">
@@ -57,7 +59,7 @@ export function createHudDom() {
         <button class="sw-use">USE</button>
       </div>
       <div class="sw-info"><b class="sw-name"></b><small class="sw-text"></small><i class="sw-time"></i>
-        <div class="sw-foot"><span class="kpc"><kbd>WHEEL</kbd> / <kbd>Q</kbd> <kbd>E</kbd> SCROLL<br><kbd>F</kbd> OR <kbd>ENTER</kbd> USE &nbsp; <kbd>ESC</kbd> CLOSE</span><span class="ktc">DRAG AROUND THE RING TO SCROLL.<br>TAP THE TOP SKILL OR USE.</span></div>
+        <div class="sw-foot"><span class="kpc kbh"><kbd>WHEEL</kbd> / <kbd>Q</kbd> <kbd>E</kbd> SCROLL<br><kbd>F</kbd> OR <kbd>ENTER</kbd> USE &nbsp; <kbd>ESC</kbd> CLOSE</span><span class="kpc pdh"><kbd>D-PAD</kbd> / <kbd>STICK</kbd> SCROLL<br><kbd>A</kbd> OR <kbd>LB</kbd> USE &nbsp; <kbd>B</kbd> CLOSE</span><span class="ktc">DRAG AROUND THE RING TO SCROLL.<br>TAP THE TOP SKILL OR USE.</span></div>
       </div>
     </div>
     <div id="bigmap" class="hidden"><div class="panel"><canvas></canvas><div class="foot">TAP OR PRESS M TO CLOSE</div></div></div>`;

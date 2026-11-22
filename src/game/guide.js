@@ -12,14 +12,15 @@ const nearest = (list, p) => {
 
 export function currentObjective(scene) {
   const p = G.profile, f = p.flags, poi = scene.poi || {};
-  const touch = scene.touch.enabled;
+  const pad = !!scene.padMode;
+  const touch = scene.touch.enabled && !pad;
   const me = { x: scene.player.x, y: scene.player.y };
 
   if (scene.kind === 'floor' && scene.floor.id === 'tutorial') {
-    if (!f.tutMoved) return { text: touch ? 'Drag the left side to move' : 'Move with WASD', target: null };
+    if (!f.tutMoved) return { text: pad ? 'Move with the left stick' : touch ? 'Drag the left side to move' : 'Move with WASD', target: null };
     if (!p.traits.length) return { text: 'Equip traits at LOADOUT', target: poi.loadout };
-    if (!f.tutHit) return { text: touch ? 'Hit a dummy: hold ATTACK' : 'Hit a dummy: hold click', target: nearest(scene.dummyList, me) };
-    if (!f.tutDodged) return { text: touch ? 'Roll with DODGE' : 'Roll with SPACE', target: null };
+    if (!f.tutHit) return { text: pad ? 'Hit a dummy: hold RT' : touch ? 'Hit a dummy: hold ATTACK' : 'Hit a dummy: hold click', target: nearest(scene.dummyList, me) };
+    if (!f.tutDodged) return { text: pad ? 'Roll with B' : touch ? 'Roll with DODGE' : 'Roll with SPACE', target: null };
     if (!f.trialCleared) return { text: f.seen_trial ? 'Clear the Trial of Bones' : 'Enter the Trial of Bones', target: poi['portal:trial'] };
     return { text: 'Take the stairs to Floor 1', target: poi['portal:floor1'] };
   }

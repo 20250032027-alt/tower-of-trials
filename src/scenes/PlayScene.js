@@ -20,6 +20,7 @@ import { Skeleton, Dummy } from '../game/enemy.js';
 import { Hud } from '../game/hud.js';
 import { XpOrbs } from '../game/orbs.js';
 import { playDeath } from '../game/deathfx.js';
+import { Pad } from '../ui/gamepad.js';
 import { Controls } from '../ui/controls.js';
 import { currentObjective } from '../game/guide.js';
 import { txt, hexToInt } from '../game/text.js';
@@ -1076,39 +1077,58 @@ export class PlayScene extends Phaser.Scene {
   readInput() {
     const k = this.keys;
     const pressed = Controls.take();
-    const usingTouch = this.touch.enabled;
+    const pd = Pad.read(); // null unless a controller was the last thing touched
+    const usingTouch = this.touch.enabled && !pd;
+    const wheelOpen = !!(G.hud && G.hud.wheel.isOpen);
     const tch = usingTouch ? G.pad.poll(() => this.autoAimAngle(), this.lastAim) : { mx: 0, my: 0, aim: null, fire: false };
     let mx = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
     let my = (k.S.isDown || k.DOWN.isDown ? 1 : 0) - (k.W.isDown || k.UP.isDown ? 1 : 0);
     if (Math.abs(tch.mx) + Math.abs(tch.my) > 0) { mx = tch.mx; my = tch.my; }
+    if (pd) {
+      mx = pd.mx; my = pd.my;
+      if (!wheelOpen && !mx && !my) { mx = pd.dx; my = pd.dy; } // the D-pad walks too (not while it is scrolling the skill wheel)
+      const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
+    }
     const cam = this.cameras.main;
     const ptr = this.input.mousePointer;
     const wp = cam.getWorldPoint(ptr.x, ptr.y);
     let aim = this.lastAim;
-    if (tch.aim != null) aim = tch.aim;
+    const padFire = !!(pd && pd.fire);
+    if (pd) {
+      // right stick aims; with it centred the attack snaps to the nearest skeleton (if auto-aim is on), else you face where you walk
+      if (pd.aimActive) aim = pd.aim;
+      else if (padFire && this.autoAimAngle() != null) aim = this.autoAimAngle();
+      else if ((mx || my) && pd.sinceAim > 500 && !padFire) aim = Math.atan2(my, mx);
+    } else if (tch.aim != null) aim = tch.aim;
     else if (!usingTouch) aim = Math.atan2(wp.y - this.player.y, wp.x - this.player.x);
     else if (mx || my) aim = Math.atan2(my, mx); // touch: face where you walk
     this.lastAim = aim;
-    const fire = (!usingTouch && ptr.leftButtonDown() && !this.pointerOnUi) || tch.fire;
+    const fire = (!usingTouch && !pd && ptr.leftButtonDown() && !this.pointerOnUi) || tch.fire || padFire;
     const J = Phaser.Input.Keyboard.JustDown;
+    const e = pd ? pd.e : {};
     const inp = {
       mx, my, aim, fire,
       firePressed: fire && !this.prevFire,
       fireReleased: !fire && this.prevFire,
-      dodge: J(k.SPACE) || !!pressed.dodge,
-      skills: J(k.F) || !!pressed.skills, // opens the skill wheel (and, with the wheel open, uses the chosen skill)
-      wheelUse: !!pressed.wheelUse,
-      wheelClose: !!pressed.wheelClose,
-      berserk: J(k.R) || !!pressed.berserk,
-      swap: J(k.Q) || !!pressed.swap || !!(this._wheelSwap && !(this._wheelSwap = false)),
-      interact: J(k.E) || !!pressed.use,
-      menu: J(k.TAB) || J(k.ESC) || !!pressed.menu,
+      dodge: J(k.SPACE) || !!pressed.dodge || !!(e.b || e.lt),
+      skills: J(k.F) || !!pressed.skills || !!e.lb, // opens the skill wheel (and, with the wheel open, uses the chosen skill)
+      wheelUse: !!pressed.wheelUse || !!(wheelOpen && e.a),
+      wheelClose: !!pressed.wheelClose || !!(wheelOpen && e.b),
+      wheelStep: pd && wheelOpen ? pd.wheelStep : 0,
+      padSkillHeld: !!(pd && pd.skillsHeld),
+      berserk: J(k.R) || !!pressed.berserk || !!e.rb,
+      swap: J(k.Q) || !!pressed.swap || !!(this._wheelSwap && !(this._wheelSwap = false)) || !!(e.y && !wheelOpen),
+      interact: J(k.E) || !!pressed.use || !!(e.a && !wheelOpen),
+      menu: J(k.TAB) || J(k.ESC) || !!pressed.menu || !!e.start,
       mute: J(k.N),
-      lock: J(k.T) || !!pressed.lock,
-      map: J(k.M),
+      lock: J(k.T) || !!pressed.lock || !!e.r3,
+      map: J(k.M) || !!e.back,
     };
+    if (wheelOpen && e.b) inp.dodge = false;
     this.prevFire = fire;
-    this.pointerWorld = { x: wp.x, y: wp.y };
+    // where the camera should lean: towards the mouse, or ahead of the player along the aim stick
+    this.pointerWorld = pd ? { x: this.player.x + Math.cos(aim) * 90, y: this.player.y + Math.sin(aim) * 90 } : { x: wp.x, y: wp.y };
+    this.padMode = !!pd;
     return inp;
   }
 
@@ -1197,7 +1217,8 @@ export class PlayScene extends Phaser.Scene {
     this.hud.tick(dt, hpFrac, this.player.dead);
     this.hbT -= dt;
     if (!this.player.dead && hpFrac < 0.3 && this.hbT <= 0) { this.hbT = 0.97; sfx('heartbeat'); } // low health: pulse in sync with the red vignette
-    const prompt = this.nearestInteract && this.nearestInteract.on ? this.nearestInteract.text : '';
+    let prompt = this.nearestInteract && this.nearestInteract.on ? this.nearestInteract.text : '';
+    if (this.padMode) prompt = prompt.replace(/^\[E\]/, '[A]');
     G.hud.setPrompt(prompt);
     if (G.pad) {
       G.pad.setUse(prompt ? shortCaption(prompt) : '');
@@ -1208,7 +1229,7 @@ export class PlayScene extends Phaser.Scene {
     this.updateGuide(time, dt);
     this.updateLabels();
     this.track(dt);
-    const showCross = !this.touch.enabled && !this.player.dead;
+    const showCross = (!this.touch.enabled || this.padMode) && !this.player.dead;
     this.hud.setCrosshair(showCross, this.pointerWorld.x, this.pointerWorld.y);
   }
 
@@ -1229,12 +1250,12 @@ export class PlayScene extends Phaser.Scene {
       music.threat(this.player.dead ? 0 : mood);
     }
     if (this.kind === 'dungeon' && this.enemyList.some((e) => e.alive && Math.hypot(e.x - p.x, e.y - p.y) < 130)) {
-      this.tip('enemy', this.touch.enabled ? 'Skeletons! Hold ATTACK to fight, DODGE to roll away.' : 'Skeletons! Click to fight, SPACE to roll away.');
+      this.tip('enemy', this.padMode ? 'Skeletons! Hold RT to fight, B to roll away.' : this.touch.enabled ? 'Skeletons! Hold ATTACK to fight, DODGE to roll away.' : 'Skeletons! Click to fight, SPACE to roll away.');
     }
     if (p.hp / p.stats.maxHealth < 0.3) this.tip('lowhp', 'Low health! Back off: you recover when out of combat.');
-    if (this.kind === 'floor' && this.floor.id === 'floor1' && this.tipT > 12) this.tip('map', this.touch.enabled ? 'Tap the minimap for the full map.' : 'Press M for the full map.');
+    if (this.kind === 'floor' && this.floor.id === 'floor1' && this.tipT > 12) this.tip('map', this.padMode ? 'Press BACK for the full map.' : this.touch.enabled ? 'Tap the minimap for the full map.' : 'Press M for the full map.');
     if (p.weaponDef.cls === 'ranger') this.tip('focus', 'Ranged: HOLD attack to focus, RELEASE to fire.');
-    if (p.weaponDef.cls === 'melee' && G.profile.kills >= 2) this.tip('aura', this.touch.enabled ? 'Tip: AURA starts Berserk (more damage, drains Force).' : 'Tip: press R for Berserk (more damage, drains Force).');
+    if (p.weaponDef.cls === 'melee' && G.profile.kills >= 2) this.tip('aura', this.padMode ? 'Tip: press RB for Berserk (more damage, drains Force).' : this.touch.enabled ? 'Tip: AURA starts Berserk (more damage, drains Force).' : 'Tip: press R for Berserk (more damage, drains Force).');
   }
 
   // objective chip, pointer arrow, goal ring and minimap
@@ -1400,10 +1421,11 @@ export class PlayScene extends Phaser.Scene {
     if (inp.skills) { this.confirmWheel(); this._fHold = false; }
     else if (inp.wheelUse) this.confirmWheel();
     else if (inp.wheelClose || inp.menu) { this.closeWheel(); inp.menu = false; this.menuLockUntil = performance.now() + 250; }
-    else if (this._fHold && !k.F.isDown) { if (performance.now() - this._fDownAt > 350) this.confirmWheel(); this._fHold = false; }
+    else if (this._fHold && !k.F.isDown && !inp.padSkillHeld) { if (performance.now() - this._fDownAt > 350) this.confirmWheel(); this._fHold = false; }
     if (Phaser.Input.Keyboard.JustDown(k.ENTER)) this.confirmWheel();
     if (inp.swap) wheel.step(-1);
     if (inp.interact) wheel.step(1);
+    if (inp.wheelStep) wheel.step(inp.wheelStep);
     inp.swap = false; inp.interact = false; inp.fire = false; inp.firePressed = false; inp.dodge = false;
   }
 

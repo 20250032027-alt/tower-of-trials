@@ -28,6 +28,9 @@ See `docs/ASSUMPTIONS.md` for every number I had to guess.
 | Menu | Tab / Esc | MENU |
 | Sound | N | menu > HELP / DEMO |
 
+### Controller (Xbox / PlayStation / Switch Pro, standard layout)
+Left stick or D-pad moves, right stick aims, RT or X attacks (hold = focus / cast), B or LT rolls, A uses / opens / reads, LB skill wheel, RB Aura, Y swaps weapon, R3 lock-on, Back full map, Start menu. In menus: D-pad moves the highlight, A presses, B closes, LB / RB change tab. Rumble follows hits (HELP tab turns it off).
+
 ## Not getting lost
 - A **yellow objective bar** at the top always says what to do next ("Hit a dummy: hold ATTACK", "Enter the Trial of Bones" ...) with the distance.
 - A **yellow arrow** at the screen edge points at the goal, and a pulsing ring shows it once it is on screen.
