@@ -55,6 +55,7 @@ var body: Sprite2D
 var wpn: Sprite2D
 var cue: Sprite2D
 var ui: Node2D
+var gather_t := 0.0
 
 func setup(w, pos: Vector2, lvl: int, stat_mult: float, index: int, room_id: String, def_id: String) -> void:
 	world = w
@@ -364,6 +365,11 @@ func _draw_sprites(_dt: float, sp: float) -> void:
 		body.modulate = Data.hex_color(def.tint)
 	var style: String = def.style
 	var prog := 1.0 - timer / float(def.windup) if state == "windup" else 0.0
+	if state == "windup" and style == "staff":   # the mage's orb gathers power
+		gather_t -= _dt
+		if gather_t <= 0.0:
+			gather_t = 0.06
+			world.gather_fx(global_position + Vector2.from_angle(angle) * 10.0, Color("c9a6ff"), 10.0 + (1.0 - prog) * 8.0)
 	var gait := minf(1.0, sp / 50.0)
 	var idle := sin(tt * 1.6) * 0.04 + sin(walk_ph) * 0.1 * gait
 	var hold := 7.0
@@ -416,7 +422,26 @@ func hurt_true(amount: float) -> void:
 	if hp <= 0.0:
 		_die(false)
 
+## the archer's aim line: it locks on for the last third of the draw, and stops at the first wall
+func _draw_aim_line() -> void:
+	var prog := 1.0 - timer / float(def.windup)
+	var locked := timer <= float(def.windup) * 0.35
+	var col := Color("ffe0c0") if locked else Color("ff6a5a")
+	var al := 0.9 if locked else 0.3 + prog * 0.5
+	var dir := Vector2.from_angle(angle)
+	var mz := global_position + dir * 8.0
+	var max_len := minf(float(def.ranged.range), 170.0)
+	var L := 8.0
+	while L <= max_len:
+		if int(L) % 20 == 8 and not world.has_los(mz, mz + dir * L):
+			break
+		if locked or int(L / 5.0) % 2 == 0:
+			ui.draw_rect(Rect2((dir * L).round(), Vector2.ONE), Color(col, al * (1.0 - L / (max_len * 1.25))))
+		L += 5.0
+
 func _draw_ui() -> void:
+	if state == "windup" and alive and String(def.style) == "bow":
+		_draw_aim_line()
 	if (bar_t > 0.0 or marked) and hp > 0.0:
 		var w := minf(18.0, maxf(8.0, stats.maxHealth / 12.0))
 		var frac := clampf(hp / stats.maxHealth, 0.0, 1.0)

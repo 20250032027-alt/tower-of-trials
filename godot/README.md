@@ -20,21 +20,27 @@ The project uses the *Compatibility* renderer, so it also works on weak PCs and 
 | Use / read / enter | E | A |
 | Swap weapon | Q | Y |
 | Lock-on on/off | T | R3 |
-| Pause | Tab / Esc | Start |
+| Skills wheel | F (hold) | LB |
+| Magic aura / Berserk | R | RB |
+| Full map | M | Back / Select |
+| Menu / pause | Tab / Esc | Start |
+| Touch | automatic on a touchscreen (settings: TOUCH CONTROLS auto / on / off) | |
 
 Rumble on a gamepad follows hits you take and land.
 
 ## What is in here
 ```
 godot/
-  project.godot          window 480x270, integer scaling, Compatibility renderer, 3 autoloads
+  project.godot          window 480x270, integer scaling, Compatibility renderer, 4 autoloads
   data/*.json            numbers and maps, EXPORTED from the web game (do not edit by hand, see below)
   assets/art/*.png       every sprite, EXPORTED from the web game's code-drawn art
+  assets/title/*.png     the title-screen vista, EXPORTED (placements in data/title.json)
+  assets/audio/          sound effects and music loops, RENDERED from the web synthesiser (npm run godot:audio)
   assets/fonts/          the pixel font
-  scripts/autoload/      Data (loads the json + sprites), Game (profile, settings, tuning, scene changes), Controls (input map)
+  scripts/autoload/      Data (json + sprites), Game (profile, saves, settings, tuning, scene changes), Controls (input map, touch mode), Sound (effects, music, buses)
   scripts/logic/         pure maths, ports of src/logic: rng, layout, stats, combat, focus, awareness, progression
   scripts/play/          the play scene, player, enemy, dummy, projectile, HUD
-  scripts/ui/            title screen
+  scripts/ui/            title screen + backdrop, menus, minimap, touch overlay
   scenes/                title.tscn, play.tscn (each is one node with a script that builds the rest in code)
   tests/                 headless tests (see below)
 ```
@@ -58,4 +64,13 @@ It runs these scenes headless:
 - `tests/weapons_smoke.tscn`, `tests/enemy_kinds_smoke.tscn`: every weapon lands hits, every enemy kind can hurt.
 - `tests/flow_smoke.tscn`: reads a sign, enters the Trial of Bones, clears it, leaves, takes the stairs to Floor 1.
 
-`tests/screenshots.tscn` saves screenshots of the main screens (needs a display).
+- `tests/skills_smoke.tscn`, `tests/menu_smoke.tscn`, `tests/map_smoke.tscn`, `tests/sound_smoke.tscn`, `tests/touch_smoke.tscn`, `tests/title_smoke.tscn`: skills / Berserk / magic, menus + save, map + fog + rift, audio manifest, touch overlay, title vista and start sequence.
+
+`tests/screenshots.tscn`, `shots_*.tscn` save screenshots (needs a display; on a server run them under `xvfb-run`).
+
+## Other scripts (repo root)
+```
+npm run godot:export   data, sprites, title pictures, parity fixtures
+npm run godot:audio    render the sound effects and music loops to godot/assets/audio (needs the web game's synth; slow, rarely needed)
+npm run godot:web      Godot Web export into public/godot/ (needs the Web export templates installed in Godot)
+```

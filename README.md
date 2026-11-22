@@ -32,7 +32,7 @@ See `docs/ASSUMPTIONS.md` for every number I had to guess.
 Left stick or D-pad moves, right stick aims, RT or X attacks (hold = focus / cast), B or LT rolls, A uses / opens / reads, LB skill wheel, RB Aura, Y swaps weapon, R3 lock-on, Back full map, Start menu. In menus: D-pad moves the highlight, A presses, B closes, LB / RB change tab. Rumble follows hits (HELP tab turns it off).
 
 ## Godot version
-A Godot 4 port is being built in `godot/` (see `godot/README.md` and `docs/GODOT_PORT.md`). The web game here stays the reference; its numbers and sprites are exported into the Godot project with `npm run godot:export`, and `npm run godot:test` runs the Godot tests. The Vercel site is not affected by the `godot/` folder.
+A Godot 4 port of the whole demo lives in `godot/` (see `godot/README.md` and `docs/GODOT_PORT.md`). The web game here stays the reference; its numbers and sprites are exported into the Godot project with `npm run godot:export`, and `npm run godot:test` runs the Godot tests. The Vercel site is not affected by the `godot/` folder.
 
 ## Not getting lost
 - A **yellow objective bar** at the top always says what to do next ("Hit a dummy: hold ATTACK", "Enter the Trial of Bones" ...) with the distance.

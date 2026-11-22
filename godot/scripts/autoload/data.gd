@@ -18,6 +18,7 @@ var floors: Dictionary
 var dungeons: Dictionary
 var rift_of: Dictionary
 var tower: Array
+var title: Dictionary
 var _tex: Dictionary = {}
 ## the web game's pixel font. 10 px = one pixel per font cell, 20 px = double.
 var font: FontFile
@@ -45,6 +46,7 @@ func _init() -> void:
 	dungeons = w.DUNGEONS
 	rift_of = w.RIFT_OF
 	tower = w.TOWER
+	title = _read("title")
 
 func _read(name: String) -> Variant:
 	var path := "res://data/%s.json" % name
@@ -53,6 +55,15 @@ func _read(name: String) -> Variant:
 	var parsed: Variant = JSON.parse_string(f.get_as_text())
 	assert(parsed != null, "bad json in " + path)
 	return parsed
+
+## a picture of the title-screen vista (assets/title/<key>.png)
+func ttex(key: String) -> Texture2D:
+	var k := "title/" + key
+	if _tex.has(k):
+		return _tex[k]
+	var t: Texture2D = load("res://assets/title/%s.png" % key)
+	_tex[k] = t
+	return t
 
 ## a sprite by its name in the web catalog, e.g. tex("player") or tex("w_sword")
 func tex(key: String) -> Texture2D:

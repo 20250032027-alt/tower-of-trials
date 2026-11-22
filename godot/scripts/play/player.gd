@@ -73,6 +73,14 @@ var deny_t := 0.0
 var walk_t := 0.0 # how long you have been walking (pad: faces the way you walk)
 var hits := 0
 var _stride := 0.0
+var _ghost_t := 0.0
+var _streak_t := 0.0
+var _after_t := 0.0
+var _skid_cd := 0.0
+var _prev_sp := 0.0
+var _prev_input := false
+var _was_dodging := false
+var _landed := 0.0
 
 # --- skills, buffs, Berserk
 var berserk = Berserk.new()
@@ -440,7 +448,24 @@ func _move(dt: float, mv: Vector2) -> void:
 		var vmax: float = dist / (DODGE_TIME * 0.65)
 		velocity = dodge_vec * vmax * (0.3 + 0.7 * k)
 		move_and_slide()
+		_ghost_t -= dt
+		if _ghost_t <= 0.0:
+			_ghost_t = 0.035
+			world.afterimage(body, hood)
+		_streak_t -= dt
+		if _streak_t <= 0.0:
+			_streak_t = 0.03
+			world.speed_streak(global_position, dodge_vec.angle())
+		_was_dodging = true
 		return
+	if _was_dodging:   # the roll just ended: you land in a crouch, dust rolling out
+		_was_dodging = false
+		_landed = 0.14
+		world.land_dust(global_position)
+	if _landed > 0.0:
+		_landed -= dt
+	if _skid_cd > 0.0:
+		_skid_cd -= dt
 	var top: float = BASE_SPEED * float(stats.moveSpeed)
 	if focusing:
 		top *= lerpf(0.85, float(weapon.get("drawSlow", 0.7)), clampf(focus, 0.0, 1.0))
@@ -457,6 +482,9 @@ func _move(dt: float, mv: Vector2) -> void:
 			velocity = dirv * top * START_KICK
 		var d := target - velocity
 		var dot := (velocity.dot(target) / (cur * target.length())) if (cur > 1.0 and target.length() > 0.0) else 1.0
+		if dot < 0.2 and cur > 80.0 and _skid_cd <= 0.0:
+			_skid_cd = 0.16
+			world.skid_dust(global_position, velocity, 3)   # hard reversal: boots skid
 		var a := ACCEL * (TURN_BOOST if dot < 0.2 else 1.0) * dt
 		if d.length() > a:
 			d = d.normalized() * a
@@ -464,7 +492,11 @@ func _move(dt: float, mv: Vector2) -> void:
 	else:
 		var cur2 := velocity.length()
 		var f := FRICTION * dt
+		if cur2 > 110.0 and _skid_cd <= 0.0 and _prev_input:
+			_skid_cd = 0.2
+			world.skid_dust(global_position, velocity, 2)   # let go at a run: a short slide
 		velocity = Vector2.ZERO if cur2 <= f else velocity - velocity / cur2 * f
+	_prev_input = l > 0.05
 	move_and_slide()
 	# footsteps: a soft puff of dust each stride
 	var sp := velocity.length()
@@ -477,6 +509,16 @@ func _move(dt: float, mv: Vector2) -> void:
 				world.step_dust(global_position, velocity)
 	else:
 		_stride = minf(_stride, 10.0)
+	# pushing off from rest
+	if _prev_sp < 25.0 and sp >= 25.0 and _landed <= 0.0:
+		world.start_dust(global_position, velocity / sp)
+	_prev_sp = sp
+	# Berserk: a red ghost trails a fast dash
+	if berserk.active and sp > 90.0:
+		_after_t -= dt
+		if _after_t <= 0.0:
+			_after_t = 0.075
+			world.afterimage(body, hood, Color("ff3a2a"), 0.28, 0.22)
 
 func _recover(dt: float) -> void:
 	var r: Dictionary = stats.regen

@@ -87,7 +87,8 @@ func _stream(file: String) -> AudioStream:
 ## which rendered sound a (name, options) pair means; "" if there is none
 func key_for(sound_name: String, o: Dictionary) -> String:
 	var sfx: Dictionary = manifest.get("sfx", {})
-	var w := String(o.get("weapon", ""))
+	var wv = o.get("weapon")
+	var w := "" if wv == null else String(wv)
 	var key := sound_name
 	match sound_name:
 		"swing":
@@ -95,7 +96,8 @@ func key_for(sound_name: String, o: Dictionary) -> String:
 		"heavy":
 			key = "swing:training_claymore"
 		"hit", "crit":
-			var mat := String(o.get("mat", "bone"))
+			var mv = o.get("mat")
+			var mat := "bone" if mv == null else String(mv)
 			var kind := "crit" if (sound_name == "crit" or o.get("crit", false)) else "hit"
 			key = "%s:%s:%s" % [kind, w if sfx.has("hit:%s:%s" % [w, mat]) else "training_sword", mat]
 		"shoot", "gun":

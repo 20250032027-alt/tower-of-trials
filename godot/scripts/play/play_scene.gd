@@ -954,6 +954,49 @@ func dust(pos: Vector2) -> void:
 func step_dust(pos: Vector2, vel: Vector2) -> void:
 	_particle("fx_puff", pos + Vector2(0, 5) - vel.normalized() * 4.0, -vel.normalized() * 8.0, 0.3, Color(1, 1, 1, 0.5), 1.8)
 
+const DUST := Color("cfc8b0")
+
+## pushing off from a standstill: two puffs behind the feet
+func start_dust(pos: Vector2, dir: Vector2) -> void:
+	for i in 2:
+		_particle("fx_dot", (pos + Vector2(-dir.x * (3 + i * 3), 6.0 - dir.y * (2 + i * 2) + (1.0 if i == 1 else -1.0))).round(), -dir * 6.0 + Vector2(0, -2), 0.24, Color(DUST, 0.55))
+
+## a hard turn or a hard stop: the boots slide, dust is thrown on ahead along the old direction
+func skid_dust(pos: Vector2, vel: Vector2, n: int = 3) -> void:
+	var u := vel.normalized()
+	for i in n:
+		var big := i == 0
+		var p := pos + Vector2(randf_range(-2.5, 2.5), 6.0 + randf_range(-1.5, 1.5))
+		_particle("fx_puff" if big else "fx_dot", p.round(), u * randf_range(6.0, 12.0) + Vector2(0, -2.0 - randf() * 2.0), randf_range(0.26, 0.38), Color(DUST, 0.4 if big else 0.6))
+
+## end of a roll: a flat ring of dust where you land
+func land_dust(pos: Vector2) -> void:
+	for i in 6:
+		var a := float(i) / 6.0 * TAU + randf() * 0.5
+		_particle("fx_dot" if i % 2 == 1 else "fx_puff", (pos + Vector2(0, 6)).round(), Vector2(cos(a) * 11.0, sin(a) * 5.0), 0.3, Color(DUST, 0.55))
+
+## thin streaks left in the air behind a roll
+func speed_streak(pos: Vector2, angle: float) -> void:
+	var o := randf_range(-6.0, 6.0)
+	var ca := cos(angle)
+	var sa := sin(angle)
+	var s := _particle("fx_streak", (pos + Vector2(-ca * 6.0 - sa * o, -sa * 6.0 + ca * o)).round(), Vector2(-ca, -sa) * 8.0, 0.15, Color("f0e6c8", 0.55))
+	s.rotation = angle
+
+## a fading copy of the player's body and hood (a roll, or a Berserk dash)
+func afterimage(body_spr: Sprite2D, hood_spr: Sprite2D, tint: Color = Color("f0d9a0"), alpha: float = 0.4, secs: float = 0.22) -> void:
+	for src in [body_spr, hood_spr]:
+		var g := Sprite2D.new()
+		g.texture = src.texture
+		g.global_position = src.global_position
+		g.rotation = src.rotation
+		g.modulate = Color(tint, alpha)
+		effects.add_child(g)
+		g.global_position = src.global_position
+		var tw := create_tween()
+		tw.tween_property(g, "modulate:a", 0.0, secs)
+		tw.tween_callback(g.queue_free)
+
 func shake(amount: float, seconds: float) -> void:
 	shake_amt = maxf(shake_amt * clampf(shake_t / 0.12, 0.0, 1.0), amount * 0.5)
 	shake_t = maxf(shake_t, seconds)

@@ -24,6 +24,7 @@ var snd_button: Button
 var new_button: Button
 var armed := false
 var backdrop
+var root: Control
 
 func _ready() -> void:
 	backdrop = Backdrop.new()
@@ -31,7 +32,7 @@ func _ready() -> void:
 	backdrop.setup()
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	var root := Control.new()
+	root = Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.theme = Theme_.make()
 	layer.add_child(root)
@@ -43,19 +44,24 @@ func _ready() -> void:
 	l1.add_theme_font_override("normal_font", Data.font)
 	l1.add_theme_font_size_override("normal_font_size", 20)
 	l1.text = "[center][color=#ffe27a]TOWER[/color] [color=#c9a24a]OF[/color] [color=#6fd6c4][[/color][color=#ffe27a]TRIALS[/color][color=#6fd6c4]][/color][/center]"
-	l1.position = Vector2(0, 14)
-	l1.size = Vector2(480, 24)
+	l1.position = Vector2(240, 28)
+	l1.size = Vector2(240, 24)
+	var strip := ColorRect.new()
+	strip.color = Color(0.03, 0.02, 0.07, 0.5)
+	strip.position = Vector2(0, 236)
+	strip.size = Vector2(480, 34)
+	root.add_child(strip)
 	root.add_child(l1)
 	var tag := Label.new()
 	tag.text = "ELEVEN FLOORS. ONE WAY UP."
 	tag.add_theme_color_override("font_color", Color("c9a24a"))
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tag.position = Vector2(0, 40)
-	tag.size = Vector2(480, 12)
+	tag.position = Vector2(240, 54)
+	tag.size = Vector2(240, 12)
 	root.add_child(tag)
 
 	var box := VBoxContainer.new()
-	box.position = Vector2(170, 176)
+	box.position = Vector2(290, 150)
 	box.size = Vector2(140, 60)
 	box.add_theme_constant_override("separation", 3)
 	root.add_child(box)
@@ -79,25 +85,26 @@ func _ready() -> void:
 	tip_label.text = "TIP  " + TIPS[tip_i]
 	tip_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
 	tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tip_label.position = Vector2(20, 244)
-	tip_label.size = Vector2(440, 12)
+	tip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip_label.position = Vector2(5, 238)
+	tip_label.size = Vector2(470, 22)
 	root.add_child(tip_label)
 	var keys := Label.new()
 	keys.text = ("L STICK MOVE   RT ATTACK   B ROLL   LB SKILLS   A USE" if Controls.using_pad else "WASD MOVE   CLICK ATTACK   SPACE DODGE   F SKILLS   E USE   TAB MENU")
 	keys.add_theme_color_override("font_color", Color(1, 1, 1, 0.4))
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	keys.position = Vector2(0, 258)
+	keys.position = Vector2(0, 259)
 	keys.size = Vector2(480, 12)
 	root.add_child(keys)
 	snd_button = _btn("", _toggle_sound)
-	snd_button.position = Vector2(398, 6)
-	snd_button.size = Vector2(76, 14)
+	snd_button.position = Vector2(384, 6)
+	snd_button.size = Vector2(90, 14)
 	root.add_child(snd_button)
 	_update_sound_text()
 	var ver := Label.new()
 	ver.text = "DEMO BUILD  -  WORKING TITLE"
 	ver.add_theme_color_override("font_color", Color(1, 1, 1, 0.3))
-	ver.position = Vector2(8, 258)
+	ver.position = Vector2(8, 6)
 	ver.size = Vector2(160, 12)
 	root.add_child(ver)
 	primary.grab_focus()
@@ -143,6 +150,7 @@ func _go(act: String) -> void:
 	elif not Game.continue_save():
 		Game.start_fresh()
 	Game.settings["last"] = act
+	create_tween().tween_property(root, "modulate:a", 0.0, 0.35)
 	backdrop.enter(func(): Game.go_play({"kind": "floor", "id": "tutorial"}))
 
 func _process(dt: float) -> void:

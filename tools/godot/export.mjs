@@ -21,6 +21,7 @@ import { TUNING_GROUPS } from '../../src/data/tuning.js';
 import { FLOORS, DUNGEONS, RIFT_OF, TOWER } from '../../src/data/world.js';
 import { buildLayout, generateRandomDef, pickRiftSpot } from '../../src/logic/layout.js';
 import { makeRng } from '../../src/logic/rng.js';
+import { exportTitle } from './export_title.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const out = join(root, 'godot');
@@ -70,6 +71,7 @@ json('tuning', TUNING_GROUPS.map((g) => ({ name: g.name, note: g.note, items: g.
 json('themes', THEMES);
 json('world', { FLOORS, DUNGEONS, RIFT_OF, TOWER });
 json('art_sizes', sizes);
+const nTitle = exportTitle({ out, png, mk });
 
 // ---------------------------------------------------------------- parity fixtures (JS built these, GDScript must build the same)
 mk(join(out, 'tests/fixtures'));
@@ -83,4 +85,4 @@ fx('layout_main', DUNGEONS.main.layout, 12345);
 const rd = generateRandomDef(42, { enemyBonus: 1 });
 fx('layout_random_42', rd, 42);
 
-console.log(`exported ${Object.keys(cat).length} sprites, ${Object.keys(FLOORS).length} floors, ${Object.keys(DUNGEONS).length} dungeons -> godot/`);
+console.log(`exported ${Object.keys(cat).length} sprites, ${nTitle} title pictures, ${Object.keys(FLOORS).length} floors, ${Object.keys(DUNGEONS).length} dungeons -> godot/`);

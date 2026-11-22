@@ -14,6 +14,15 @@ func check(ok: bool, what: String) -> void:
 func dummy_pos_fallback(pl) -> Vector2:
 	return pl.dummy_list[0].global_position + Vector2(-40, 0)
 
+var mana_min := 0.0
+
+## like frames(), but remembers the lowest mana seen (it regenerates, so the end value can be back at the start)
+func track(p, n: int) -> void:
+	for i in n:
+		await get_tree().physics_frame
+		await get_tree().process_frame
+		mana_min = minf(mana_min, p.mana)
+
 func frames(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
@@ -148,15 +157,16 @@ func _ready() -> void:
 		dummy.hits = 0
 		dummy.total = 0.0
 		var m0: float = p.mana
+		mana_min = m0
 		Input.action_press("attack")
-		await frames(60 if id == "training_mage_book" else 20)
+		await track(p, 60 if id == "training_mage_book" else 20)
 		if id == "training_staff":
-			await frames(90)  # hold: the charge builds
+			await track(p, 90)  # hold: the charge builds
 			check(p.charging and p.charge_t > 0.5, "the staff charges while held (%.2f)" % p.charge_t)
 		Input.action_release("attack")
-		await frames(90)
+		await track(p, 90)
 		check(dummy.hits > 0, "%s hits the dummy (%d)" % [id, dummy.hits])
-		check(p.mana < m0, "%s costs mana" % id)
+		check(mana_min < m0, "%s costs mana" % id)
 	# no circle, no magic
 	Game.profile.manaCircles = 0
 	p.refresh_stats()
