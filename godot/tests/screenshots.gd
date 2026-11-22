@@ -29,10 +29,13 @@ func _ready() -> void:
 	await get_tree().create_timer(0.2).timeout
 	await _shot("3_dialog")
 	play.hud.close_dialog()
-	play.hud.paused = true
-	await get_tree().create_timer(0.2).timeout
-	await _shot("4_pause")
-	play.hud.paused = false
+	Game.profile.traits = ["mana_surge"]
+	play.menu.open()
+	for t in ["status", "traits", "weapons", "magic", "tower", "help", "tuning", "demo"]:
+		play.menu._set_tab(t)
+		await get_tree().create_timer(0.25).timeout
+		await _shot("menu_" + t)
+	play.menu.close()
 	play.queue_free()
 	# a fight in the Bone Hall (floor 1 dungeon: soldiers and lancers)
 	Game.pending = {"kind": "dungeon", "id": "bone_hall", "seed": 3}

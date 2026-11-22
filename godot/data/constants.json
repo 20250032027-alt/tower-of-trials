@@ -203,5 +203,16 @@
    "color": "#c27bff"
   }
  },
+ "RANK_ORDER": [
+  "F",
+  "E",
+  "D",
+  "C",
+  "B",
+  "A",
+  "S"
+ ],
+ "GAME_TITLE": "Tower of [Trials]",
+ "GEMINI_NOTICE": "Constellation [Gemini] blesses you with her creation and divinity.",
  "xpToNext": "round(30 + 14 * level)"
 }

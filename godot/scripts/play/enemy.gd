@@ -28,6 +28,8 @@ var stats: Dictionary
 var hp := 1.0
 var alive := true
 var is_dummy := false
+var marked := false
+var mark_icon: Sprite2D
 var state := "idle"
 var timer := 0.0
 var cooldown := 0.5
@@ -390,11 +392,28 @@ func _draw_sprites(_dt: float, sp: float) -> void:
 	cue.visible = show_cue
 	cue.modulate.a = 1.0 if cue_t > 0.0 else clampf(alert * 1.4, 0.3, 1.0)
 
+## damage that ignores defense (the lifesteal skill)
+func hurt_true(amount: float) -> void:
+	if not alive:
+		return
+	hp -= amount
+	bar_t = 3.0
+	if hp <= 0.0:
+		_die(false)
+
 func _draw_ui() -> void:
-	if bar_t > 0.0 and hp > 0.0:
+	if (bar_t > 0.0 or marked) and hp > 0.0:
 		var w := minf(18.0, maxf(8.0, stats.maxHealth / 12.0))
 		var frac := clampf(hp / stats.maxHealth, 0.0, 1.0)
 		ui.draw_rect(Rect2(-w / 2.0 - 1, -17, w + 2, 4), Color("120d0a"))
 		ui.draw_rect(Rect2(-w / 2.0, -16, w * frac, 2), Color("d9503f"))
-	if bar_t > 0.0 or state == "chase" or state == "windup":
+	if marked and mark_icon == null:
+		mark_icon = Sprite2D.new()
+		mark_icon.texture = Data.tex("fx_mark")
+		mark_icon.z_index = 30
+		add_child(mark_icon)
+	if mark_icon != null:
+		mark_icon.visible = marked and alive
+		mark_icon.position = Vector2(0, -24.0 + sin(Time.get_ticks_msec() / 200.0) * 1.5)
+	if bar_t > 0.0 or marked or state == "chase" or state == "windup":
 		ui.draw_string(world.font, Vector2(-20, -20), "LV%d" % level, HORIZONTAL_ALIGNMENT_CENTER, 40, 10, Data.rank_color(rank))

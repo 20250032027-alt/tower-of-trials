@@ -9,6 +9,7 @@ const Player = preload("res://scripts/play/player.gd")
 const Enemy = preload("res://scripts/play/enemy.gd")
 const Dummy = preload("res://scripts/play/dummy.gd")
 const Hud = preload("res://scripts/play/hud.gd")
+const Menu = preload("res://scripts/ui/menu.gd")
 
 const TS := 16
 
@@ -29,12 +30,19 @@ var entities: Node2D
 var effects: Node2D
 var camera: Camera2D
 var hud
+var menu
+var menu_lock_until := 0
 var player
 var enemy_list: Array = []
 var dummy_list: Array = []
 var interactables: Array = []
 var pickups: Array = []
 var animated: Array = []
+var wheel_open := false
+var wheel_idx := 0
+var _f_down_at := 0
+var _f_hold := false
+var kick_off := Vector2.ZERO
 var shake_amt := 0.0
 var shake_t := 0.0
 var _stop_until := 0.0
@@ -57,6 +65,9 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.setup(self)
 	add_child(hud)
+	menu = Menu.new()
+	add_child(menu)
+	menu.setup(self)
 	if not dun.is_empty() and total_enemies == 0:
 		_mark_cleared(true)
 	hud.toast((String(dun.name) if not dun.is_empty() else String(floor_def.name)).to_upper())
@@ -203,7 +214,7 @@ func _build_objects() -> void:
 				var key := "o_altar_mana" if o.kind == "mana" else "o_altar_loadout"
 				_flat(key, c)
 				_label(c + Vector2(0, -17), o.label, Color("d6b0ff") if o.kind == "mana" else Color("9fc8ff"))
-				_add_interact(c, 24.0, func(): return ("MANA ALTAR" if o.kind == "mana" else "OPEN LOADOUT"), func(): hud.toast("THE MENUS ARE NOT IN THE GODOT PORT YET"))
+				_add_interact(c, 24.0, func(): return ("MANA ALTAR" if o.kind == "mana" else "OPEN LOADOUT"), func(): Game.sfx("ui"); menu.open("magic" if o.kind == "mana" else "traits"))
 			"portal":
 				var req = o.get("requires")
 				var locked: bool = req != null and not flags.get(req, false)
@@ -330,22 +341,24 @@ func _process(dt: float) -> void:
 	for a in animated:
 		var f := int(Time.get_ticks_msec() / 1000.0 * a.speed) % int(a.n)
 		a.sprite.texture = Data.tex("%s%d" % [a.prefix, f])
+	if player != null:
+		camera.global_position = player.global_position  # (smoothing and the map limits are on the camera)
+	var dt_real := dt / maxf(0.05, Engine.time_scale)
+	kick_off = kick_off.lerp(Vector2.ZERO, minf(1.0, dt_real * 12.0))
 	if shake_t > 0.0:
 		shake_t -= dt
-		camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake_amt * clampf(shake_t / 0.12, 0.0, 1.0)
+		camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake_amt * clampf(shake_t / 0.12, 0.0, 1.0) * Game.shake_scale() / 0.3 + kick_off
 	else:
-		camera.offset = Vector2.ZERO
-	frozen = hud.dialog_open or ending or hud.paused
+		camera.offset = kick_off
+	frozen = hud.dialog_open or ending or menu.is_open
+	_drive_wheel()
 	if not frozen and not player.dead:
 		_check_interact()
 		_check_pickups()
 	elif hud.dialog_open and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("attack") or Input.is_action_just_pressed("menu")):
 		hud.close_dialog()
-	if Input.is_action_just_pressed("menu") and not hud.dialog_open and not ending:
-		hud.toggle_pause()
-	if hud.paused and Input.is_action_just_pressed("full_map"):
-		hud.paused = false
-		Game.go_title()
+	if Input.is_action_just_pressed("menu") and not hud.dialog_open and not ending and not menu.is_open and Time.get_ticks_msec() > menu_lock_until:
+		menu.open()
 
 func _check_interact() -> void:
 	var best = null
@@ -368,6 +381,13 @@ func _check_pickups() -> void:
 			pickups.erase(p)
 
 # ------------------------------------------------------------------ rules: portals, chests, xp, clearing, dying
+## go to a floor from the menu (the TOWER tab)
+func travel(id: String) -> void:
+	if ending:
+		return
+	ending = true
+	Game.go_play({"kind": "floor", "id": id})
+
 func _use_portal(to: Dictionary, tile: Vector2i, locked: bool, lock_text: String) -> void:
 	if locked:
 		hud.toast("THE STAIRS ARE SEALED. CLEAR: " + lock_text.to_upper())
@@ -426,16 +446,20 @@ func spawn_orbs(pos: Vector2, amount: int) -> void:
 			o.queue_free())
 
 func gain_xp(amount: float) -> void:
-	var gained := Progression.add_xp(Game.profile, amount, player.stats.expRate * Game.t("xpRate"))
+	var gained := Progression.add_xp(Game.profile, amount, player.stats.expRate * Game.t("xpRate"), Game.rng)
 	if gained > 0:
 		player.refresh_stats()
 		player.hp = player.stats.maxHealth
 		float_text(player.global_position + Vector2(0, -20), "LEVEL UP", Color("ffe27a"))
 		hud.toast("LEVEL UP!  LV %d  RANK %s" % [Game.profile.level, Data.rank_of_level(Game.profile.level)])
 		ring_fx(player.global_position, Color("ffe27a"))
+		for stat in Progression.last_adaptive:
+			hud.toast("ADAPTIVE GROWTH: +10% %s" % String(stat).to_upper())
+		Game.persist()
 
 func on_enemy_killed(e) -> void:
 	Game.profile.kills += 1
+	player.on_kill()
 	spawn_orbs(e.global_position, Progression.xp_from_enemy(e.def, e.level, float(dun.get("xpBonus", 1.0))))
 	if Game.rng.chance(float(e.def.healDropChance)):
 		var img := Sprite2D.new()
@@ -595,3 +619,211 @@ func toast(text: String) -> void:
 
 func _exit_tree() -> void:
 	Engine.time_scale = 1.0
+
+# ------------------------------------------------------------------ noise, kick, and the FX the skills and magic use
+## fighting is loud: sleeping skeletons in the same room start to notice
+func noise(pos: Vector2) -> void:
+	var rid := room_at(pos)
+	if rid == "":
+		return
+	for e in enemy_list:
+		if is_instance_valid(e) and e.alive and e.room == rid and (e.state == "idle" or e.state == "search"):
+			e.alert = maxf(e.alert, 0.6)
+			e.sense_t = 0.0
+
+## the camera is pushed a little (recoil, a hard hit)
+func kick(angle: float, px: float) -> void:
+	kick_off += Vector2.from_angle(angle) * px * 0.4
+
+func flash_hurt(a: float) -> void:
+	hud.hurt_a = maxf(hud.hurt_a, a)
+
+func glow_pop(pos: Vector2, color: Color, scale_value: float = 0.6, seconds: float = 0.14, alpha: float = 0.55) -> void:
+	var g := _glow(pos.round(), color, scale_value)
+	g.modulate = Color(color.r, color.g, color.b, alpha)
+	g.z_index = 5
+	effects.add_child(g)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(g, "modulate:a", 0.0, seconds).set_ease(Tween.EASE_OUT)
+	tw.tween_property(g, "scale", Vector2.ONE * scale_value * 1.35, seconds)
+	tw.chain().tween_callback(g.queue_free)
+
+func rise_fx(pos: Vector2, color: Color, n: int = 8, spread: float = 9.0, height: float = 22.0) -> void:
+	for i in n:
+		var d := Sprite2D.new()
+		d.texture = Data.tex("fx_dot")
+		d.position = (pos + Vector2(randf_range(-spread, spread), 3.0 + randf() * 4.0)).round()
+		d.modulate = Color(color.r, color.g, color.b, 0.0) if i % 3 != 0 else Color(1, 1, 1, 0.0)
+		var m := CanvasItemMaterial.new()
+		m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		d.material = m
+		effects.add_child(d)
+		var delay := i * 0.038
+		var dur := 0.52 + randf() * 0.26
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(d, "modulate:a", 1.0, 0.09).set_delay(delay)
+		tw.tween_property(d, "position", d.position + Vector2(randf_range(-3, 3), -height - randf() * 10.0), dur).set_delay(delay).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(d, "modulate:a", 0.0, 0.4).set_delay(delay + 0.33)
+		tw.chain().tween_callback(d.queue_free)
+
+func skill_fx(pos: Vector2, kind: String) -> Color:
+	var table := {"heal": "7fe8a0", "secondwind": "7fe8a0", "mana": "6fa8ff", "shield": "9fd8ff", "mark": "ff6a5a", "cdcut": "c9a6ff", "bloodlust": "ff4a4a", "lifesteal": "ff4a6a", "predator": "ffb04a", "berserk": "ff3a2a", "buff": "ffe27a"}
+	var c := Color(table.get(kind, table.buff))
+	ring_fx(pos, c)
+	glow_pop(pos, c, 1.0, 0.26, 0.6)
+	match kind:
+		"heal", "secondwind":
+			rise_fx(pos, c, 12, 9.0, 26.0)
+		"mana":
+			rise_fx(pos, c, 10, 8.0, 24.0)
+		"shield":
+			shockwave(pos, c, 0.35)
+		"mark":
+			ring_fx(pos, c)
+		_:
+			rise_fx(pos, c, 9, 8.0, 22.0)
+	return c
+
+func shockwave(pos: Vector2, color: Color, pw: float) -> void:
+	ring_fx(pos, color)
+	var n := 6 + roundi(pw * 8.0)
+	for i in n:
+		var a := float(i) / n * TAU + randf() * 0.4
+		var r := 10.0 + pw * 14.0 + randf() * 6.0
+		_particle("fx_puff" if i % 3 != 0 else "fx_dot", pos + Vector2(0, 2), Vector2(cos(a), sin(a) * 0.5) * r / 0.7 / 0.32, 0.32, Color(0.81, 0.78, 0.69, 0.5))
+	var rocks := roundi(2.0 + pw * 5.0)
+	for i in rocks:
+		var a2 := randf() * TAU
+		var sp := 14.0 + randf() * 26.0 * (0.5 + pw)
+		_particle("fx_rust", pos, Vector2(cos(a2), sin(a2) * 0.6) * sp / 0.7 + Vector2(0, -randf_range(20, 50)), 0.34 + randf() * 0.12)
+
+func ember_fx(pos: Vector2, color: Color) -> void:
+	var c := Color("ffe9a0") if randf() < 0.3 else color
+	var life := 0.7 + randf() * 0.5
+	_particle("fx_dot", pos + Vector2(randf_range(-2, 2), 0), Vector2(randf_range(-4, 4), -(10.0 + randf() * 8.0)) / (0.7 * life), life, c, 1.0, true)
+
+func float_mote(pos: Vector2, color: Color) -> void:
+	_particle("fx_dot", pos.round(), Vector2(0, -8) / 0.49, 0.7, color, 1.0, true)
+
+func gather_fx(tip: Vector2, color: Color, r: float = 16.0) -> void:
+	var a := randf() * TAU
+	var d := Sprite2D.new()
+	d.texture = Data.tex("fx_dot")
+	d.position = (tip + Vector2(cos(a), sin(a)) * r).round()
+	d.modulate = color
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	d.material = m
+	effects.add_child(d)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(d, "position", tip, 0.2).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(d, "modulate:a", 0.2, 0.2)
+	tw.chain().tween_callback(d.queue_free)
+
+## a little mote that drifts off a blessed Trialist: a leaf, light rising, a spark, something drawn into the void
+func ambient_mote(type: String, pos: Vector2, color: Color) -> void:
+	var a := randf() * TAU
+	var r := 6.0 + randf() * 8.0
+	var p := (pos + Vector2(cos(a) * r, sin(a) * r * 0.7)).round()
+	var d := Sprite2D.new()
+	d.texture = Data.tex("fx_dot")
+	d.position = p
+	d.modulate = Color("6ed48a") if type == "natural" else color
+	var m := CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	d.material = m
+	effects.add_child(d)
+	var tw := create_tween().set_parallel(true)
+	match type:
+		"natural":
+			tw.tween_property(d, "position", p + Vector2(-6, 12), 1.1).set_trans(Tween.TRANS_SINE)
+			tw.tween_property(d, "modulate:a", 0.0, 1.1)
+		"divine":
+			tw.tween_property(d, "position", p + Vector2(0, -14), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tw.tween_property(d, "modulate:a", 0.0, 1.0)
+		"arcane":
+			tw.tween_property(d, "position", p + Vector2(cos(a + 1.4), sin(a + 1.4) * 0.7) * 10.0, 0.7).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+			tw.tween_property(d, "modulate:a", 0.0, 0.7)
+		_:
+			d.position = (pos + Vector2(cos(a) * 20.0, sin(a) * 14.0)).round()
+			tw.tween_property(d, "position", pos.round(), 0.8).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+			tw.tween_property(d, "modulate:a", 0.0, 0.8)
+	tw.chain().tween_callback(d.queue_free)
+
+# ------------------------------------------------------------------ the skill wheel (F / LB): the world slows right down while you choose
+func open_wheel() -> void:
+	if Data.skills.is_empty():
+		hud.toast("NO SKILLS YET.")
+		return
+	var sel = Game.profile.selSkill
+	wheel_idx = 0
+	for i in Data.skills.size():
+		if Data.skills[i].id == sel:
+			wheel_idx = i
+	wheel_open = true
+	Engine.time_scale = 0.2
+	_f_down_at = Time.get_ticks_msec()
+	_f_hold = true
+	Game.sfx("wheelopen")
+
+func close_wheel(quiet: bool = false) -> void:
+	if not wheel_open:
+		return
+	wheel_open = false
+	Engine.time_scale = 1.0
+	if not quiet:
+		Game.sfx("wheelclose")
+
+func wheel_step(d: int) -> void:
+	var n: int = Data.skills.size()
+	wheel_idx = (wheel_idx + d + n) % n
+	Game.sfx("wheeltick")
+
+func confirm_wheel() -> void:
+	var id: String = Data.skills[wheel_idx].id
+	Game.profile.selSkill = id
+	if player.use_skill(id):
+		close_wheel(true)
+
+## while the wheel is open: Q / E (or the mouse wheel, or the pad's D-pad) scroll, F or ENTER or A uses, ESC or B closes;
+## holding F and letting go also uses
+func _drive_wheel() -> void:
+	if not wheel_open:
+		if Input.is_action_just_pressed("skill_wheel") and not player.dead and not menu.is_open and not hud.dialog_open and not ending:
+			open_wheel()
+		return
+	if player.dead or menu.is_open or ending:
+		close_wheel(true)
+		return
+	var pad := Controls.using_pad
+	if Input.is_action_just_pressed("skill_wheel"):
+		confirm_wheel()
+		_f_hold = false
+	elif Input.is_action_just_pressed("ui_accept") or (pad and Input.is_action_just_pressed("interact")):
+		confirm_wheel()
+	elif Input.is_action_just_pressed("menu") or (pad and Input.is_action_just_pressed("dodge")):
+		close_wheel()
+		menu_lock_until = Time.get_ticks_msec() + 250
+	elif _f_hold and not Input.is_action_pressed("skill_wheel"):
+		if Time.get_ticks_msec() - _f_down_at > 350:
+			confirm_wheel()
+		_f_hold = false
+	if not pad:
+		if Input.is_action_just_pressed("swap_weapon"):
+			wheel_step(-1)
+		if Input.is_action_just_pressed("interact"):
+			wheel_step(1)
+	else:
+		for a in ["move_left", "move_up"]:
+			if Input.is_action_just_pressed(a):
+				wheel_step(-1)
+		for a in ["move_right", "move_down"]:
+			if Input.is_action_just_pressed(a):
+				wheel_step(1)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if wheel_open and event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			wheel_step(1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			wheel_step(-1)

@@ -21,6 +21,8 @@ const scenes = [
   ['every weapon hits', 'res://tests/weapons_smoke.tscn'],
   ['every enemy kind hurts', 'res://tests/enemy_kinds_smoke.tscn'],
   ['first part of the demo, start to Floor 1', 'res://tests/flow_smoke.tscn'],
+  ['menus, settings, tuning, save and load', 'res://tests/menu_smoke.tscn'],
+  ['skills, Berserk, skill wheel, book and staff', 'res://tests/skills_smoke.tscn'],
 ];
 let failed = 0;
 for (const [name, scene] of scenes) {

@@ -11,6 +11,7 @@ var enemy_mix: Dictionary
 var traits: Array
 var trait_by_id: Dictionary = {}
 var skills: Array
+var skill_by_id: Dictionary = {}
 var tuning_groups: Array
 var themes: Dictionary
 var floors: Dictionary
@@ -35,6 +36,8 @@ func _init() -> void:
 	for t in traits:
 		trait_by_id[t.id] = t
 	skills = _read("skills").SKILLS
+	for sk in skills:
+		skill_by_id[sk.id] = sk
 	tuning_groups = _read("tuning")
 	themes = _read("themes")
 	var w: Dictionary = _read("world")

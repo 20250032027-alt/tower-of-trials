@@ -5,6 +5,7 @@ const Combat = preload("res://scripts/logic/combat.gd")
 var world
 var alive := true
 var is_dummy := true
+var marked := false
 var radius := 8.0
 var hits := 0
 var total := 0.0
