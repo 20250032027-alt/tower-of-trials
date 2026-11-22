@@ -12,7 +12,9 @@
     "test": "node --test",
     "connect": "node scripts/connect.mjs",
     "deploy": "npm run build && gh-pages -d dist -t",
-    "single": "npm run build && node scripts/make-single.mjs"
+    "single": "npm run build && node scripts/make-single.mjs",
+    "godot:export": "node tools/godot/export.mjs",
+    "godot:test": "node tools/godot/test.mjs"
   },
   "dependencies": {
     "phaser": "3.90.0"
