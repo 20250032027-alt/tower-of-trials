@@ -390,7 +390,7 @@ func _update_aim(mv: Vector2, fire: bool, dt: float) -> void:
 		var st: Vector2 = Controls.aim_vector()
 		if st.length() > 0.3:
 			aim = st.angle()
-		elif fire and Game.settings.auto_aim:
+		elif fire and (Game.settings.auto_aim or Controls.using_touch):
 			var tg = world.nearest_target(global_position, 230.0)
 			if tg != null:
 				aim = (tg.global_position - global_position).angle()

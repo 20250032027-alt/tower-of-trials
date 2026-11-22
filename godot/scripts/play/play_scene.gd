@@ -11,6 +11,7 @@ const Dummy = preload("res://scripts/play/dummy.gd")
 const Hud = preload("res://scripts/play/hud.gd")
 const Menu = preload("res://scripts/ui/menu.gd")
 const Guide = preload("res://scripts/logic/guide.gd")
+const Touch = preload("res://scripts/ui/touch.gd")
 
 const TS := 16
 
@@ -44,6 +45,7 @@ var run_key := ""
 var map_key := ""
 var crack_hp: Dictionary = {}     # sealed cracked walls: Vector2i -> hits left
 var minimap
+var touch
 var pointer: Sprite2D
 var goal_ring: Sprite2D
 var chest_count := 0
@@ -90,6 +92,12 @@ func _ready() -> void:
 	menu = Menu.new()
 	add_child(menu)
 	menu.setup(self)
+	var touch_layer := CanvasLayer.new()
+	touch_layer.layer = 12
+	add_child(touch_layer)
+	touch = Touch.new()
+	touch_layer.add_child(touch)
+	touch.setup(self)
 	pointer = Sprite2D.new()
 	pointer.z_index = 60
 	pointer.visible = false
@@ -191,6 +199,10 @@ func wall_hit(pos: Vector2) -> void:
 	var ty := int(floor(pos.y / TS))
 	if tx >= 0 and ty >= 0 and tx < layout.w and ty < layout.h and layout.tiles[ty * layout.w + tx] == Layout.CRACK:
 		hit_crack_tile(tx, ty)
+
+## the words for a control: keyboard, pad or touch
+func ctl(key: String, pad_text: String, touch_text: String) -> String:
+	return touch_text if Controls.using_touch else (pad_text if Controls.using_pad else key)
 
 func tip(id: String, text: String) -> void:
 	var f: Dictionary = Game.profile.flags
@@ -626,17 +638,17 @@ func _tips() -> void:
 	if not dun.is_empty():
 		for e in enemy_list:
 			if is_instance_valid(e) and e.alive and e.global_position.distance_to(p.global_position) < 130.0:
-				tip("enemy", "Skeletons! Hold RT to fight, B to roll away." if pad else "Skeletons! Click to fight, SPACE to roll away.")
+				tip("enemy", ctl("Skeletons! Click to fight, SPACE to roll away.", "Skeletons! Hold RT to fight, B to roll away.", "Skeletons! Hold the right side to fight, ROLL to dodge."))
 				break
 	if p.hp / p.stats.maxHealth < 0.3:
 		tip("lowhp", "Low health! Back off: you recover when out of combat.")
 	tip_t += 0.25
 	if not floor_def.is_empty() and floor_def.id == "floor1" and tip_t > 12.0:
-		tip("map", "Press BACK for the full map." if pad else "Press M for the full map.")
+		tip("map", ctl("Press M for the full map.", "Press BACK for the full map.", "Tap the minimap for the full map."))
 	if p.weapon.cls == "ranger":
 		tip("focus", "Ranged: HOLD attack to focus, RELEASE to fire.")
 	if p.weapon.cls == "melee" and int(Game.profile.kills) >= 2:
-		tip("aura", "Tip: press RB for Berserk (more damage, drains Force)." if pad else "Tip: press R for Berserk (more damage, drains Force).")
+		tip("aura", ctl("Tip: press R for Berserk (more damage, drains Force).", "Tip: press RB for Berserk (more damage, drains Force).", "Tip: AURA starts Berserk (more damage, drains Force)."))
 
 func _check_interact() -> void:
 	var best = null

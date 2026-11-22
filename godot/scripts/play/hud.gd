@@ -103,10 +103,11 @@ func _draw_hud() -> void:
 	# stamina low hint, key hints
 	var pad: bool = Controls.using_pad
 	var hint := "B ROLL   Y SWAP   A USE   BACK MAP   START MENU" if pad else "SPACE ROLL  Q SWAP  E USE  M MAP  TAB MENU"
-	_text(Vector2(472, 262), hint, Color(1, 1, 1, 0.55), 10, HORIZONTAL_ALIGNMENT_RIGHT, 300)
+	if not Controls.using_touch:
+		_text(Vector2(472, 262), hint, Color(1, 1, 1, 0.55), 10, HORIZONTAL_ALIGNMENT_RIGHT, 300)
 	# prompt
 	if prompt != "" and not dialog_open:
-		var key := "A" if pad else "E"
+		var key := "USE" if Controls.using_touch else ("A" if pad else "E")
 		var s2 := "[%s] %s" % [key, prompt]
 		canvas.draw_rect(Rect2(240 - 4 - s2.length() * 3, 232, s2.length() * 6 + 8, 13), Color(0.07, 0.05, 0.04, 0.8))
 		_text(Vector2(240 - s2.length() * 3, 242), s2, Color("ffe27a"))
@@ -190,7 +191,7 @@ func _draw_skill_box(p) -> void:
 	canvas.draw_rect(r, Color("1b1410"))
 	var key := "LB" if Controls.using_pad else "F"
 	if sd == null:
-		_text(Vector2(r.position.x, 261), "[%s] SKILLS" % key, Color(1, 1, 1, 0.6), 10, HORIZONTAL_ALIGNMENT_CENTER, w)
+		_text(Vector2(r.position.x, 261), "SKILLS" if Controls.using_touch else "[%s] SKILLS" % key, Color(1, 1, 1, 0.6), 10, HORIZONTAL_ALIGNMENT_CENTER, w)
 		return
 	var cd_left: float = float(p.cd.get(id, 0.0))
 	var cd_max: float = maxf(0.001, float(p.cd_max.get(id, 1.0)))

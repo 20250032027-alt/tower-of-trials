@@ -5,6 +5,9 @@ extends Node
 signal device_changed(using_pad: bool)
 
 var using_pad := false
+var using_touch := false    # the last thing used was the touch overlay
+var mouse_seen := false     # a real mouse has moved (so AUTO touch controls step aside)
+var touch_mode := false
 
 func _ready() -> void:
 	_stick("move_left", JOY_AXIS_LEFT_X, -1.0, [KEY_A, KEY_LEFT], JOY_BUTTON_DPAD_LEFT)
@@ -66,7 +69,36 @@ func _stick(action: String, axis: JoyAxis, sign_value: float, keys: Array, dpad:
 	_action(action, keys, dpad)
 	_axis_only(action, axis, sign_value)
 
+## the touch overlay takes the left mouse button off "attack": a touch also arrives as an emulated click, which must not fire
+func set_touch_mode(on: bool) -> void:
+	touch_mode = on
+	var has_mouse := false
+	for e in InputMap.action_get_events("attack"):
+		if e is InputEventMouseButton:
+			has_mouse = true
+	if on and has_mouse:
+		for e in InputMap.action_get_events("attack"):
+			if e is InputEventMouseButton:
+				InputMap.action_erase_event("attack", e)
+	elif not on and not has_mouse:
+		var m := InputEventMouseButton.new()
+		m.button_index = MOUSE_BUTTON_LEFT
+		InputMap.action_add_event("attack", m)
+	if on:
+		touch_began()
+
+func touch_began() -> void:
+	mouse_seen = false
+	if not using_pad or not using_touch:
+		using_pad = true
+		using_touch = true
+		device_changed.emit(true)
+
 func _input(event: InputEvent) -> void:
+	if (event is InputEventMouseButton or event is InputEventMouseMotion) and event.device == InputEvent.DEVICE_ID_EMULATION:
+		return   # a click made from a touch: the touch overlay deals with it
+	if event is InputEventMouseMotion and event.relative.length() > 1.0:
+		mouse_seen = true
 	var pad := using_pad
 	if event is InputEventJoypadButton:
 		pad = true
@@ -79,6 +111,8 @@ func _input(event: InputEvent) -> void:
 		pad = false
 	if pad != using_pad:
 		using_pad = pad
+		if event is InputEventKey or event is InputEventMouseButton or event is InputEventMouseMotion or event is InputEventJoypadButton or event is InputEventJoypadMotion:
+			using_touch = false
 		device_changed.emit(using_pad)
 
 func move_vector() -> Vector2:

@@ -607,6 +607,10 @@ func _r_help() -> void:
 			S[k] = not S[k]
 			Game.sfx("ui")
 			render()))
+	toggles.append(_button("TOUCH CONTROLS: " + String(S.get("touch", "auto")).to_upper(), "o_touch", func():
+		S.touch = {"auto": "on", "on": "off", "off": "auto"}[String(S.get("touch", "auto"))]
+		Game.sfx("ui")
+		render()))
 	toggles.append(_button("SHOW TIPS AGAIN", "tips", func():
 		for f in Game.profile.flags.keys():
 			if String(f).begins_with("tip_"):

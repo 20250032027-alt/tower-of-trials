@@ -25,6 +25,7 @@ const scenes = [
   ['skills, Berserk, skill wheel, book and staff', 'res://tests/skills_smoke.tscn'],
   ['goal arrow, minimap, fog, cracked wall, hidden vault, rifts', 'res://tests/map_smoke.tscn'],
   ['sound effects and music', 'res://tests/sound_smoke.tscn'],
+  ['touch controls', 'res://tests/touch_smoke.tscn'],
 ];
 let failed = 0;
 for (const [name, scene] of scenes) {

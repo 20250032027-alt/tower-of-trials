@@ -19,17 +19,18 @@ static func objective(world) -> Dictionary:
 	var f: Dictionary = prof.flags
 	var poi: Dictionary = world.poi
 	var pad: bool = Controls.using_pad
+	var touch: bool = Controls.using_touch
 	var me: Vector2 = world.player.global_position
 
 	if not world.floor_def.is_empty() and world.floor_def.id == "tutorial":
 		if not f.get("tutMoved", false):
-			return {"text": "Move with the left stick" if pad else "Move with WASD", "target": null}
+			return {"text": "Drag the left side to move" if touch else ("Move with the left stick" if pad else "Move with WASD"), "target": null}
 		if prof.traits.is_empty():
 			return {"text": "Equip traits at LOADOUT", "target": poi.get("loadout")}
 		if not f.get("tutHit", false):
-			return {"text": "Hit a dummy: hold RT" if pad else "Hit a dummy: hold click", "target": _nearest(world.dummy_list, me)}
+			return {"text": "Hit a dummy: hold the right side" if touch else ("Hit a dummy: hold RT" if pad else "Hit a dummy: hold click"), "target": _nearest(world.dummy_list, me)}
 		if not f.get("tutDodged", false):
-			return {"text": "Roll with B" if pad else "Roll with SPACE", "target": null}
+			return {"text": "Roll with the ROLL button" if touch else ("Roll with B" if pad else "Roll with SPACE"), "target": null}
 		if not f.get("trialCleared", false):
 			return {"text": "Clear the Trial of Bones" if f.get("seen_trial", false) else "Enter the Trial of Bones", "target": poi.get("portal:trial")}
 		return {"text": "Take the stairs to Floor 1", "target": poi.get("portal:floor1")}

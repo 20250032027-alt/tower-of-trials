@@ -7,7 +7,7 @@ const SAVE_PATH := "user://save.json"
 const SETTINGS_PATH := "user://settings.json"
 const DEFAULT_SETTINGS := {
 	"guide": true, "minimap": true, "auto_aim": true, "lock_on": true, "rumble": true,
-	"muted": false, "music_vol": 0.7, "sfx_vol": 1.0, "shake": 0.3, "trait_mode": "random", "zoom": 0,
+	"muted": false, "music_vol": 0.7, "sfx_vol": 1.0, "shake": 0.3, "trait_mode": "random", "zoom": 0, "touch": "auto",
 }
 
 var profile: Dictionary
