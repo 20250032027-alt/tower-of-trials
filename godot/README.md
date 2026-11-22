@@ -4,6 +4,8 @@ The Godot 4 version of the demo. The web game (Phaser, in `../src`) stays as the
 **Read `../docs/GODOT_PORT.md` first**: it explains how the port works, what is done, and what to do next.
 
 ## Open it
+On Windows, double-click `run_godot.bat` in the repo root: it finds Godot on the PC (Godot is a portable .exe that Windows search often misses) and starts the game; `run_godot.bat edit` opens the editor instead.
+
 1. Install **Godot 4.4 or newer** (standard build, not .NET). Tested on 4.4.1.
 2. Godot Project Manager > **Import** > pick `godot/project.godot` > Open. The first open imports the sprites (a few seconds).
 3. Press **F5** to play. It starts on the title screen, then the Tutorial Floor.
